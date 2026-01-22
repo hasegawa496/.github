@@ -1,6 +1,6 @@
 name: ✨ 機能
 description: 新機能を記録する
-labels: ["enhancement"]
+labels: ["feature"]
 assignees: ["hasegawa496"]
 
 body:
