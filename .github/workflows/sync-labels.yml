@@ -1,9 +1,10 @@
 # ラベル同期 Reusable Workflow
-# 呼び出し元で使用:
-#   jobs:
-#     sync:
-#       uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
-#       secrets: inherit
+#
+# 依存ファイル:
+#   - hasegawa496/.github/.github/labels.yml（ラベル定義）
+#
+# 使用方法:
+#   hasegawa496/.github/workflow-templates/sync-labels.yml を参照
 
 name: Sync Labels
 
