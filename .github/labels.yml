@@ -1,5 +1,19 @@
 # ラベル定義（個人開発向けシンプル構成）
-# 手動実行: Actions > Sync Labels > Run workflow
+#
+# 依存関係:
+#   - .github/workflows/sync-labels.yml が このファイルを読み込んでラベルを同期
+#   - .github/ISSUE_TEMPLATE/*.yml の labels フィールドと対応
+#
+# 使用方法:
+#   1. 各リポジトリに workflow-templates/sync-labels.yml をコピー
+#   2. Actions > Sync Labels > Run workflow で手動実行
+#
+# 対応するイシューテンプレート:
+#   - bug         → bug.yml (🐛 バグ)
+#   - feature     → feature.yml (✨ 機能)
+#   - task        → task.yml (📋 作業)
+#   - improvement → improvement.yml (🔧 改善)
+#   - documentation → docs.yml (📝 文書)
 
 # イシュータイプ
 - name: bug
