@@ -1,0 +1,29 @@
+name: タスク
+description: 作業タスクを記録する
+labels: ["task"]
+assignees: ["hasegawa496"]
+
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 作業項目
+      placeholder: |
+        - [ ]
+        - [ ]
+    validations:
+      required: false
+
+  - type: textarea
+    id: note
+    attributes:
+      label: メモ
+    validations:
+      required: false

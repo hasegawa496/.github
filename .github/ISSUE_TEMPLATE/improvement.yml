@@ -1,0 +1,19 @@
+name: 改善提案
+description: 改善やリファクタリングを記録する
+labels: ["improvement"]
+assignees: ["hasegawa496"]
+
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+    validations:
+      required: true
+
+  - type: textarea
+    id: note
+    attributes:
+      label: メモ
+    validations:
+      required: false

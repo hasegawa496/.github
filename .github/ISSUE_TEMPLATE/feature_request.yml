@@ -1,0 +1,26 @@
+name: 機能追加
+description: 新機能を記録する
+labels: ["enhancement"]
+assignees: ["hasegawa496"]
+
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用シーン
+    validations:
+      required: false
+
+  - type: textarea
+    id: note
+    attributes:
+      label: メモ
+    validations:
+      required: false
