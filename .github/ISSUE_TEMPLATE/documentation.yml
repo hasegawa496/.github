@@ -1,0 +1,19 @@
+name: 📝 文書
+description: ドキュメントの追加・修正を記録する
+labels: ["documentation"]
+assignees: ["hasegawa496"]
+
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+    validations:
+      required: true
+
+  - type: textarea
+    id: note
+    attributes:
+      label: メモ
+    validations:
+      required: false

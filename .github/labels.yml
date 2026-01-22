@@ -18,6 +18,10 @@
   color: "7057ff"
   description: "改善・リファクタリング。既存機能の最適化など"
 
+- name: documentation
+  color: "1d76db"
+  description: "ドキュメントの追加・修正"
+
 # ステータス
 - name: duplicate
   color: "cfd3d7"
