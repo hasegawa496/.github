@@ -1,4 +1,4 @@
-name: バグ報告
+name: 🐛 バグ
 description: バグや不具合を記録する
 labels: ["bug"]
 assignees: ["hasegawa496"]

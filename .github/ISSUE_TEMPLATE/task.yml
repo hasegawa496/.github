@@ -1,4 +1,4 @@
-name: タスク
+name: 📋 タスク
 description: 作業タスクを記録する
 labels: ["task"]
 assignees: ["hasegawa496"]
