@@ -1,0 +1,12 @@
+# ラベル同期（Reusable Workflow呼び出し）
+# このファイルを .github/workflows/sync-labels.yml にコピーして使用
+
+name: Sync Labels
+
+on:
+  workflow_dispatch:  # 手動実行
+
+jobs:
+  sync:
+    uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
+    secrets: inherit

@@ -1,0 +1,27 @@
+# ラベル同期 Reusable Workflow
+# 呼び出し元で使用:
+#   jobs:
+#     sync:
+#       uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
+#       secrets: inherit
+
+name: Sync Labels
+
+on:
+  workflow_call:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout .github repository
+        uses: actions/checkout@v4
+        with:
+          repository: hasegawa496/.github
+          path: .github-repo
+
+      - name: Sync labels
+        uses: EndBug/label-sync@v2
+        with:
+          config-file: .github-repo/.github/labels.yml
+          delete-other-labels: false
