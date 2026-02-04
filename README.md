@@ -11,6 +11,8 @@
 - ラベル同期（Reusable Workflow）: `.github/workflows/sync-labels.yml`
   - `EndBug/label-sync@v2` を使い、`.github/labels.yml` を同期元として対象リポジトリのラベルを更新します
   - `delete-other-labels: true` のため、定義外ラベルは削除して定義のみ残します
+- ShellCheck（Reusable Workflow）: `.github/workflows/shellcheck.yml`
+  - `scripts/*.sh` などのシェルスクリプトを静的解析します
 
 ## 使い方
 
@@ -48,6 +50,11 @@ curl -fsSL https://raw.githubusercontent.com/hasegawa496/.github/main/scripts/bo
 # - 途中で失敗した場合は理由を表示し、手動での対応を促します
 bash /tmp/bootstrap-sync-labels.sh
 ```
+
+### 3) ShellCheck
+
+対象リポジトリに、`workflow-templates/shellcheck.yml` を `.github/workflows/shellcheck.yml` としてコピーして push します。
+PR / push で自動的に ShellCheck が走ります。
 
 ## 変更の目安
 

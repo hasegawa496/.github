@@ -1,0 +1,15 @@
+name: ShellCheck
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    uses: hasegawa496/.github/.github/workflows/shellcheck.yml@main
+
