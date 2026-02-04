@@ -10,6 +10,12 @@ name: Sync Labels
 
 on:
   workflow_call:
+    inputs:
+      delete_other_labels:
+        description: "定義ファイルにないラベルを削除する"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -29,4 +35,4 @@ jobs:
         uses: EndBug/label-sync@v2
         with:
           config-file: .github-repo/.github/labels.yml
-          delete-other-labels: true
+          delete-other-labels: ${{ inputs.delete_other_labels }}

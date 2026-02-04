@@ -21,3 +21,6 @@ jobs:
   sync:
     uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
     secrets: inherit
+    with:
+      # 定義外ラベルは削除し、定義されているものだけに揃える
+      delete_other_labels: true

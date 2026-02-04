@@ -32,23 +32,23 @@
 
 #### もっと簡単に（スクリプトで自動 push + 自動実行）
 
-対象リポジトリのルートで `scripts/bootstrap-sync-labels.sh` 相当のスクリプトを実行すると、
+対象リポジトリのルートで `scripts/setup-label-sync.sh` 相当のスクリプトを実行すると、
 ラベル同期用 workflow を追加して push し、そのまま `workflow_dispatch` を起動できます。
 
-- スクリプト: `scripts/bootstrap-sync-labels.sh`
+- スクリプト: `scripts/setup-label-sync.sh`
 - 前提: `gh`（GitHub CLI）でログイン済み、かつそのリポジトリへ push できること
 
 例（対象リポジトリで実行）:
 
 ```bash
 # 1) スクリプトを持ってくる（例: raw を取得）
-curl -fsSL https://raw.githubusercontent.com/hasegawa496/.github/main/scripts/bootstrap-sync-labels.sh \
-  -o /tmp/bootstrap-sync-labels.sh
+curl -fsSL https://raw.githubusercontent.com/hasegawa496/.github/main/scripts/setup-label-sync.sh \
+  -o /tmp/setup-label-sync.sh
 
 # 2) 実行
 # - 専用ブランチ作成 -> PR 作成 -> マージ -> Actions 起動 まで「試みます」
 # - 途中で失敗した場合は理由を表示し、手動での対応を促します
-bash /tmp/bootstrap-sync-labels.sh
+bash /tmp/setup-label-sync.sh
 ```
 
 ### 3) ShellCheck

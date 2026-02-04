@@ -1,34 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-die() {
-  echo "$*" >&2
-  exit 1
+script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "$script_dir/lib/common.sh"
+
+usage() {
+  cat >&2 <<'USAGE'
+使い方: scripts/setup-label-sync.sh
+
+ラベル同期 workflow を導入し、可能ならそのまま起動します。
+
+注意:
+  - 対象リポジトリのルートで実行してください。
+  - 前提: git, gh（GitHub CLI）, `gh auth login` 済み
+USAGE
 }
 
-if ! command -v git >/dev/null 2>&1; then
-  die "git が見つかりません。"
-fi
+case "${1:-}" in
+  "" ) ;;
+  -h|--help) usage; exit 0 ;;
+  *) die "不明な引数です: $1（--help を参照）" ;;
+esac
 
-inside_work_tree="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
-is_bare_repo="$(git rev-parse --is-bare-repository 2>/dev/null || echo "true")"
+cd_repo_root
+ensure_gh_auth
 
-if [[ "$is_bare_repo" == "true" || "$inside_work_tree" != "true" ]]; then
-  die "このスクリプトは「作業ツリーがある」git リポジトリで実行してください（bare リポジトリや .git ディレクトリ内では実行できません）。"
-fi
-
-if ! command -v gh >/dev/null 2>&1; then
-  die "gh (GitHub CLI) が見つかりません。インストール後、`gh auth login` を実行してください。"
-fi
-
-if ! gh auth status >/dev/null 2>&1; then
-  die "gh の認証ができていません。`gh auth login` を実行してください。"
-fi
-
-repo_full="$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || true)"
-if [[ -z "$repo_full" ]]; then
-  die "gh から GitHub リポジトリ情報を取得できませんでした。GitHub リポジトリを clone したディレクトリで実行していますか？"
-fi
+repo_full="$(get_repo_full)"
 
 default_branch="$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"
 default_branch="${default_branch:-main}"
@@ -58,21 +56,13 @@ jobs:
   sync:
     uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
     secrets: inherit
+    with:
+      # 定義外ラベルは削除し、定義されているものだけに揃える
+      delete_other_labels: true
 YAML
 
 # Actions が無効なら、可能なら API で有効化し、無理なら案内して中断する。
-actions_enabled="$(gh api "repos/$repo_full/actions/permissions" -q '.enabled' 2>/dev/null || true)"
-if [[ "$actions_enabled" != "true" && "$actions_enabled" != "false" ]]; then
-  die "$repo_full の Actions 設定を取得できませんでした。admin 権限が必要、または Organization のポリシーで Actions が無効化されている可能性があります。"
-fi
-
-if [[ "$actions_enabled" == "false" ]]; then
-  echo "$repo_full は GitHub Actions が無効です。API 経由で有効化を試みます..." >&2
-  if ! err="$(gh api -X PUT "repos/$repo_full/actions/permissions" -f enabled=true 2>&1)"; then
-    echo "$err" >&2
-    die "Actions を有効化できませんでした。リポジトリ設定で Actions を有効化（admin 権限が必要）してから再実行してください。"
-  fi
-fi
+ensure_actions_enabled "$repo_full"
 
 # 既に workflow が入っているなら、安全のため上書きはせず「起動だけ」する。
 workflow_path=".github/workflows/sync-labels.yml"
@@ -92,6 +82,7 @@ if [[ -f "$workflow_path" ]]; then
     if gh workflow view sync-labels.yml >/dev/null 2>&1; then
       break
     fi
+    echo "workflow の認識待ち... ($attempt/10)" >&2
     sleep 2
   done
 
@@ -192,6 +183,7 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if gh workflow view sync-labels.yml >/dev/null 2>&1; then
     break
   fi
+  echo "workflow の認識待ち... ($attempt/10)" >&2
   sleep 2
 done
 
