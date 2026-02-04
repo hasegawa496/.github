@@ -4,18 +4,12 @@
 #   - hasegawa496/.github/.github/labels.yml（ラベル定義）
 #
 # 使用方法:
-#   hasegawa496/.github/workflow-templates/sync-labels.yml を参照
+#   hasegawa496/.github/workflow-templates/sync-labels-manual.yml を参照
 
 name: Sync Labels
 
 on:
   workflow_call:
-    inputs:
-      delete_other_labels:
-        description: "定義ファイルにないラベルを削除する"
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -35,4 +29,4 @@ jobs:
         uses: EndBug/label-sync@v2
         with:
           config-file: .github-repo/.github/labels.yml
-          delete-other-labels: ${{ inputs.delete_other_labels }}
+          delete-other-labels: true

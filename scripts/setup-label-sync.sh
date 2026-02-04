@@ -11,17 +11,61 @@ usage() {
 
 ラベル同期 workflow を導入し、可能ならそのまま起動します。
 
+オプション:
+  --no-wait  workflow の完了を待たずに終了します（デフォルトは待つ）
+  --strict   既存の workflow が想定と違う場合は中断します（デフォルトは警告して実行）
+
 注意:
   - 対象リポジトリのルートで実行してください。
   - 前提: git, gh（GitHub CLI）, `gh auth login` 済み
 USAGE
 }
 
-case "${1:-}" in
-  "" ) ;;
-  -h|--help) usage; exit 0 ;;
-  *) die "不明な引数です: $1（--help を参照）" ;;
-esac
+wait_for_completion="true"
+strict_mode="false"
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help) usage; exit 0 ;;
+    --no-wait) wait_for_completion="false" ;;
+    --strict) strict_mode="true" ;;
+    *) die "不明な引数です: $arg（--help を参照）" ;;
+  esac
+done
+
+watch_latest_run() {
+  local run_id=""
+
+  # `gh workflow run` は run id を返さないため、直近の run を取得して追跡する。
+  for attempt in 1 2 3 4 5; do
+    run_id="$(gh run list --workflow sync-labels-manual.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
+    if [[ -n "$run_id" ]]; then
+      break
+    fi
+    echo "実行状況の取得待ち... ($attempt/5)" >&2
+    sleep 2
+  done
+
+  if [[ -z "$run_id" ]]; then
+    echo "実行状況を取得できませんでした。Actions 画面で 'Sync Labels (Manual)' の実行状況を確認してください。" >&2
+    return 0
+  fi
+
+  if gh run watch "$run_id" --exit-status; then
+    echo "workflow が完了しました（成功）。" >&2
+    return 0
+  fi
+
+  echo "workflow が失敗しました。Actions のログを確認してください。" >&2
+  return 1
+}
+
+cleanup_remote_branch_hint() {
+  local branch="$1"
+  echo "リモートブランチが残っている場合の削除例:" >&2
+  echo "  gh pr list --head \"$branch\"" >&2
+  echo "  gh pr close --delete-branch \"$branch\"  # PRが残っていれば" >&2
+  echo "  git push origin --delete \"$branch\"     # 直接消す（権限があれば）" >&2
+}
 
 cd_repo_root
 ensure_gh_auth
@@ -56,49 +100,66 @@ jobs:
   sync:
     uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
     secrets: inherit
-    with:
-      # 定義外ラベルは削除し、定義されているものだけに揃える
-      delete_other_labels: true
 YAML
 
 # Actions が無効なら、可能なら API で有効化し、無理なら案内して中断する。
 ensure_actions_enabled "$repo_full"
 
 # 既に workflow が入っているなら、安全のため上書きはせず「起動だけ」する。
-workflow_path=".github/workflows/sync-labels.yml"
+workflow_path=".github/workflows/sync-labels-manual.yml"
 if [[ -f "$workflow_path" ]]; then
   if ! command -v cmp >/dev/null 2>&1; then
-    die "$workflow_path は既に存在します（cmp コマンドが無いため内容比較できません）。安全のため上書きしないので、内容確認の上で手動実行してください。"
-  fi
+    if [[ "$strict_mode" == "true" ]]; then
+      die "$workflow_path は既に存在します（cmp コマンドが無いため内容比較できません）。--strict のため中断します。"
+    fi
+    echo "既に存在します: $workflow_path（cmp が無いため内容比較できません）。上書きせず、workflow を起動します。" >&2
+  else
+    if ! cmp -s "$workflow_path" "$expected_workflow"; then
+      if [[ "$strict_mode" == "true" ]]; then
+        die "既に存在します: $workflow_path（内容が想定と異なるため、--strict のため中断します）"
+      fi
 
-  if ! cmp -s "$workflow_path" "$expected_workflow"; then
-    die "既に存在します: $workflow_path（内容が想定と異なるため、安全のため上書きしません。内容を確認して手動で調整してください）"
-  fi
+      if ! grep -q "workflow_dispatch" -- "$workflow_path"; then
+        die "既に存在します: $workflow_path（内容が想定と異なり、workflow_dispatch もありません）。この workflow は手動実行できません。テンプレート（workflow-templates/sync-labels-manual.yml）を .github/workflows/sync-labels-manual.yml として導入し直してください。"
+      fi
 
-  echo "既に存在します: $workflow_path（同一内容のため、上書きせず workflow を起動します）" >&2
+      echo "既に存在します: $workflow_path（内容が想定と異なります）。上書きせず、workflow を起動します。" >&2
+      echo "※ 定義や呼び出し先が更新されている可能性があるため、必要に応じて $workflow_path の内容を確認してください。" >&2
+    else
+      echo "既に存在します: $workflow_path（同一内容のため、上書きせず workflow を起動します）" >&2
+    fi
+  fi
 
   # workflow は登録直後に認識されるまで少し時間がかかることがある。
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    if gh workflow view sync-labels.yml >/dev/null 2>&1; then
+    if gh workflow view sync-labels-manual.yml >/dev/null 2>&1; then
       break
     fi
     echo "workflow の認識待ち... ($attempt/10)" >&2
     sleep 2
   done
 
-  if ! gh workflow view sync-labels.yml >/dev/null 2>&1; then
-    echo "GitHub が 'sync-labels.yml' を workflow としてまだ認識していません。" >&2
-    echo "数分待ってから Actions 画面で 'Sync Labels' を手動実行してください。" >&2
+  if ! gh workflow view sync-labels-manual.yml >/dev/null 2>&1; then
+    echo "GitHub が 'sync-labels-manual.yml' を workflow としてまだ認識していません。" >&2
+    echo "数分待ってから Actions 画面で 'Sync Labels (Manual)' を手動実行してください。" >&2
     exit 1
   fi
 
-  if ! err="$(gh workflow run sync-labels.yml --ref "$default_branch" 2>&1)"; then
+  if ! err="$(gh workflow run sync-labels-manual.yml --ref "$default_branch" 2>&1)"; then
     echo "$err" >&2
-    echo "workflow の起動に失敗しました。Actions 画面から 'Sync Labels' を手動実行してください。" >&2
+    if printf '%s' "$err" | grep -q "Workflow does not have 'workflow_dispatch' trigger"; then
+      echo "sync-labels-manual.yml に workflow_dispatch が無いため起動できません。" >&2
+      echo "（このリポジトリに入っているのは workflow_call 用の Reusable Workflow の可能性があります）" >&2
+    fi
+    echo "workflow の起動に失敗しました。Actions 画面から 'Sync Labels (Manual)' を手動実行してください。" >&2
     exit 1
   fi
 
-  echo "起動しました: Sync Labels（ref: $default_branch）"
+  if [[ "$wait_for_completion" == "true" ]]; then
+    watch_latest_run || true
+  fi
+
+  echo "起動しました: Sync Labels (Manual)（ref: $default_branch）"
   exit 0
 fi
 
@@ -172,7 +233,8 @@ fi
 echo "PR をマージします..." >&2
 if ! err="$(gh pr merge "$pr_number" --squash --delete-branch 2>&1)"; then
   echo "$err" >&2
-  echo "PR を自動でマージできませんでした。PR を手動でマージした後、Actions から 'Sync Labels' を実行してください。" >&2
+  echo "PR を自動でマージできませんでした。PR を手動でマージした後、Actions から 'Sync Labels (Manual)' を実行してください。" >&2
+  cleanup_remote_branch_hint "$branch"
   exit 1
 fi
 
@@ -180,23 +242,45 @@ echo "マージ完了。workflow を起動します..." >&2
 
 # workflow はマージ直後に登録されるまで少し時間がかかることがある。
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  if gh workflow view sync-labels.yml >/dev/null 2>&1; then
+  if gh workflow view sync-labels-manual.yml >/dev/null 2>&1; then
     break
   fi
   echo "workflow の認識待ち... ($attempt/10)" >&2
   sleep 2
 done
 
-if ! gh workflow view sync-labels.yml >/dev/null 2>&1; then
-  echo "GitHub が 'sync-labels.yml' を workflow としてまだ認識していません。" >&2
-  echo "数分待ってから Actions 画面で 'Sync Labels' を手動実行してください。" >&2
+if ! gh workflow view sync-labels-manual.yml >/dev/null 2>&1; then
+  echo "GitHub が 'sync-labels-manual.yml' を workflow としてまだ認識していません。" >&2
+  echo "数分待ってから Actions 画面で 'Sync Labels (Manual)' を手動実行してください。" >&2
   exit 1
 fi
 
-if ! err="$(gh workflow run sync-labels.yml --ref "$default_branch" 2>&1)"; then
+if ! err="$(gh workflow run sync-labels-manual.yml --ref "$default_branch" 2>&1)"; then
   echo "$err" >&2
-  echo "workflow の起動に失敗しました。Actions 画面から 'Sync Labels' を手動実行してください。" >&2
+  echo "workflow の起動に失敗しました。Actions 画面から 'Sync Labels (Manual)' を手動実行してください。" >&2
   exit 1
 fi
 
-echo "起動しました: Sync Labels（ref: $default_branch）"
+if [[ "$wait_for_completion" == "true" ]]; then
+  watch_latest_run || true
+fi
+
+echo "起動しました: Sync Labels (Manual)（ref: $default_branch）"
+
+echo "後片付けをします（ローカルブランチの削除など）..." >&2
+
+# ローカルブランチは GitHub の設定（delete_branch_on_merge）では消えないため、
+# ここで明示的に消します。作業ブランチ上にいる場合はデフォルトブランチへ戻します。
+if ! git show-ref --verify --quiet "refs/heads/$default_branch"; then
+  git fetch --quiet origin "$default_branch" >/dev/null 2>&1 || true
+  git checkout -q -B "$default_branch" "origin/$default_branch"
+else
+  git checkout -q "$default_branch"
+fi
+
+if git show-ref --verify --quiet "refs/heads/$branch"; then
+  git branch -D "$branch" >/dev/null 2>&1 || true
+fi
+
+# リモートブランチ削除は gh 側で試みていますが、残っている場合に備えて念のため実施します。
+git push --quiet origin --delete "$branch" >/dev/null 2>&1 || true

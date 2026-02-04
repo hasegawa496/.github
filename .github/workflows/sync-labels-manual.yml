@@ -1,0 +1,17 @@
+# ラベル同期（このリポジトリ用の手動実行）
+#
+# Reusable Workflow（workflow_call）である `.github/workflows/sync-labels.yml` を呼び出します。
+
+name: Sync Labels (Manual)
+
+on:
+  workflow_dispatch:  # 手動実行
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync-labels.yml
+    secrets: inherit

@@ -27,8 +27,8 @@
 
 ### 2) ラベル同期
 
-対象リポジトリに、`workflow-templates/sync-labels.yml` を `.github/workflows/sync-labels.yml` としてコピーして push します。
-その後、対象リポジトリの Actions から手動実行（`Sync Labels`）できます。
+対象リポジトリに、`workflow-templates/sync-labels-manual.yml` を `.github/workflows/sync-labels-manual.yml` としてコピーして push します。
+その後、対象リポジトリの Actions から手動実行（`Sync Labels (Manual)`）できます。
 
 #### もっと簡単に（スクリプトで自動 push + 自動実行）
 

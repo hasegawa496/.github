@@ -1,14 +1,14 @@
-# ラベル同期（Reusable Workflow呼び出し）
+# ラベル同期（手動実行 / Reusable Workflow呼び出し）
 #
 # 使用方法:
-#   1. このファイルを対象リポジトリの .github/workflows/sync-labels.yml にコピー
+#   1. このファイルを対象リポジトリの .github/workflows/sync-labels-manual.yml にコピー
 #   2. Actions > Sync Labels > Run workflow で手動実行
 #
 # 呼び出し先:
 #   - hasegawa496/.github/.github/workflows/sync-labels.yml（Reusable Workflow）
 #   - hasegawa496/.github/.github/labels.yml（ラベル定義）
 
-name: Sync Labels
+name: Sync Labels (Manual)
 
 on:
   workflow_dispatch:  # 手動実行
@@ -21,6 +21,3 @@ jobs:
   sync:
     uses: hasegawa496/.github/.github/workflows/sync-labels.yml@main
     secrets: inherit
-    with:
-      # 定義外ラベルは削除し、定義されているものだけに揃える
-      delete_other_labels: true
