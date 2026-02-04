@@ -29,4 +29,4 @@ jobs:
         uses: EndBug/label-sync@v2
         with:
           config-file: .github-repo/.github/labels.yml
-          delete-other-labels: false
+          delete-other-labels: true

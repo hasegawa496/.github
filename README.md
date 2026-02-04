@@ -10,7 +10,7 @@
 - ラベル定義の共通化: `.github/labels.yml`
 - ラベル同期（Reusable Workflow）: `.github/workflows/sync-labels.yml`
   - `EndBug/label-sync@v2` を使い、`.github/labels.yml` を同期元として対象リポジトリのラベルを更新します
-  - `delete-other-labels: false` のため、定義外ラベルは削除しません（追加/更新が中心）
+  - `delete-other-labels: true` のため、定義外ラベルは削除して定義のみ残します
 
 ## 使い方
 
