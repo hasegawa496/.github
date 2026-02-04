@@ -43,8 +43,10 @@
 curl -fsSL https://raw.githubusercontent.com/hasegawa496/.github/main/scripts/bootstrap-sync-labels.sh \
   -o /tmp/bootstrap-sync-labels.sh
 
-# 2) 実行（保護ブランチ運用なら --branch と --pr 推奨）
-bash /tmp/bootstrap-sync-labels.sh --branch chore/add-sync-labels --pr
+# 2) 実行
+# - 専用ブランチ作成 -> PR 作成 -> マージ -> Actions 起動 まで「試みます」
+# - 途中で失敗した場合は理由を表示し、手動での対応を促します
+bash /tmp/bootstrap-sync-labels.sh
 ```
 
 ## 変更の目安
