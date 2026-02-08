@@ -1,0 +1,319 @@
+# Issue を Project に追加し、優先度/規模/Estimate を自動設定する Reusable Workflow
+#
+# 目的:
+#   - Issue 作成時に Project（Projects v2）へ自動追加
+#   - AI 推定で Project のフィールドを更新（優先度/規模/Estimate）
+#
+# 前提:
+#   - Projects v2 に以下のフィールドが存在すること
+#       - 優先度（Single select）
+#       - 規模（Single select）
+#       - Estimate（Number）
+#   - Project 更新には `project` 権限を持つトークン（PAT など）が必要になる場合があります
+#
+# 使い方:
+#   - workflow-templates/triage-project-fields-issues.yml を各リポジトリへコピーして利用します
+
+name: Issueトリアージ（Projectフィールド自動設定）
+
+on:
+  workflow_call:
+    inputs:
+      project_owner:
+        description: Project の owner（ユーザー名/組織名）
+        required: false
+        type: string
+      project_number:
+        description: Project の番号
+        required: false
+        type: number
+        default: 12
+      priority_field_name:
+        description: 優先度フィールド名（Single select）
+        required: false
+        type: string
+        default: 優先度
+      size_field_name:
+        description: 規模フィールド名（Single select）
+        required: false
+        type: string
+        default: 規模
+      estimate_field_name:
+        description: Estimate フィールド名（Number）
+        required: false
+        type: string
+        default: Estimate
+      openai_model:
+        description: OpenAI のモデル名
+        required: false
+        type: string
+        default: gpt-4o-mini
+    secrets:
+      project_token:
+        description: Projects v2 更新用トークン（PAT など）
+        required: false
+      openai_api_key:
+        description: OpenAI API キー（未設定の場合は提案コメントのみ）
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Project へ追加しフィールドを更新
+        env:
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
+          PROJECT_OWNER: ${{ inputs.project_owner || github.repository_owner }}
+          PROJECT_NUMBER: ${{ inputs.project_number }}
+          PRIORITY_FIELD_NAME: ${{ inputs.priority_field_name }}
+          SIZE_FIELD_NAME: ${{ inputs.size_field_name }}
+          ESTIMATE_FIELD_NAME: ${{ inputs.estimate_field_name }}
+          OPENAI_MODEL: ${{ inputs.openai_model }}
+          PROJECT_TOKEN: ${{ secrets.project_token }}
+          OPENAI_API_KEY: ${{ secrets.openai_api_key }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          comment() {
+            local body="$1"
+            GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" -f body="$body" >/dev/null || true
+          }
+
+          if [[ -z "${PROJECT_TOKEN:-}" ]]; then
+            comment "Projects v2 を更新するためのトークンが未設定です。`PROJECT_TOKEN`（Project への書き込み権限）を設定してください。"
+            exit 0
+          fi
+
+          issue_json="$(GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}")"
+          issue_title="$(jq -r '.title // ""' <<<"$issue_json")"
+          issue_body="$(jq -r '.body // ""' <<<"$issue_json")"
+          issue_url="$(jq -r '.html_url // ""' <<<"$issue_json")"
+
+          project_query='
+            query($owner:String!, $number:Int!){
+              user(login:$owner){
+                projectV2(number:$number){
+                  id
+                  title
+                  fields(first:100){
+                    nodes{
+                      ... on ProjectV2FieldCommon { id name dataType }
+                      ... on ProjectV2SingleSelectField { id name dataType options { id name } }
+                    }
+                  }
+                }
+              }
+              organization(login:$owner){
+                projectV2(number:$number){
+                  id
+                  title
+                  fields(first:100){
+                    nodes{
+                      ... on ProjectV2FieldCommon { id name dataType }
+                      ... on ProjectV2SingleSelectField { id name dataType options { id name } }
+                    }
+                  }
+                }
+              }
+            }'
+
+          project_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$project_query" -F owner="${PROJECT_OWNER}" -F number="${PROJECT_NUMBER}")"
+          project_obj="$(jq -c '.data.organization.projectV2 // .data.user.projectV2 // empty' <<<"$project_json")"
+          if [[ -z "$project_obj" ]]; then
+            comment "Project（${PROJECT_OWNER}/${PROJECT_NUMBER}）の取得に失敗しました。owner/番号が正しいか確認してください。"
+            exit 0
+          fi
+
+          project_id="$(jq -r '.id' <<<"$project_obj")"
+          project_title="$(jq -r '.title' <<<"$project_obj")"
+
+          field_id_by_name() {
+            local name="$1"
+            jq -r --arg name "$name" '.fields.nodes[] | select(.name==$name) | .id' <<<"$project_obj" | head -n1
+          }
+
+          priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
+          size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
+          estimate_field_id="$(field_id_by_name "${ESTIMATE_FIELD_NAME}")"
+
+          missing=()
+          [[ -z "${priority_field_id:-}" ]] && missing+=("${PRIORITY_FIELD_NAME}")
+          [[ -z "${size_field_id:-}" ]] && missing+=("${SIZE_FIELD_NAME}")
+          [[ -z "${estimate_field_id:-}" ]] && missing+=("${ESTIMATE_FIELD_NAME}")
+          if (( ${#missing[@]} > 0 )); then
+            comment "Project「${project_title}」に必要なフィールドが見つかりません: ${missing[*]}。フィールド名を合わせるか、workflow の inputs（*_field_name）を調整してください。"
+            exit 0
+          fi
+
+          option_id_by_name() {
+            local field_name="$1"
+            local option_name="$2"
+            jq -r --arg field "$field_name" --arg opt "$option_name" '
+              .fields.nodes[]
+              | select(.name==$field)
+              | .options[]?
+              | select(.name==$opt)
+              | .id
+            ' <<<"$project_obj" | head -n1
+          }
+
+          existing_item_query='
+            query($contentId:ID!){
+              node(id:$contentId){
+                ... on Issue {
+                  projectItems(first:50){
+                    nodes { id project { id } }
+                  }
+                }
+              }
+            }'
+          existing_items_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$existing_item_query" -F contentId="${ISSUE_NODE_ID}")"
+          item_id="$(jq -r --arg pid "$project_id" '.data.node.projectItems.nodes[]? | select(.project.id==$pid) | .id' <<<"$existing_items_json" | head -n1)"
+
+          if [[ -z "${item_id:-}" ]]; then
+            add_item_mutation='
+              mutation($projectId:ID!, $contentId:ID!){
+                addProjectV2ItemById(input:{projectId:$projectId, contentId:$contentId}){
+                  item { id }
+                }
+              }'
+            if ! add_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$add_item_mutation" -F projectId="${project_id}" -F contentId="${ISSUE_NODE_ID}" 2>/dev/null)"; then
+              comment "Issue を Project に追加できませんでした（権限不足の可能性があります）。Project: ${PROJECT_OWNER}/${PROJECT_NUMBER}\n\nIssue: ${issue_url}"
+              exit 0
+            fi
+            item_id="$(jq -r '.data.addProjectV2ItemById.item.id // empty' <<<"$add_json")"
+          fi
+
+          # AI 推定（JSON）
+          priority_opt="未定"
+          size_opt="未定"
+          estimate_num=0
+          reasoning="（推定理由なし）"
+
+          if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+            prompt="$(cat <<EOF
+          次の Issue を読み、Project のフィールドを設定するために JSON で出力してください。
+
+          # 出力形式（JSON）
+          {
+            "priority": "未定 | P0: 緊急 | P1: 高 | P2: 中 | P3: 低 | P0 | P1 | P2 | P3",
+            "size": "未定 | XS | S | M | L | XL",
+            "estimate": 0,
+            "reasoning": "短い根拠"
+          }
+
+          - priority と size は、可能なら Project 側の選択肢名に合わせてください（priority は P0/P1 のみでも可）。
+          - estimate は整数（例: 1, 2, 3, 5, 8, 13 など）で、分からなければ 0。
+          - 必ず JSON のみを返してください。
+
+          # Issue
+          タイトル: ${issue_title}
+          本文:
+          ${issue_body}
+          EOF
+          )"
+
+            openai_payload="$(jq -n \
+              --arg model "${OPENAI_MODEL}" \
+              --arg instructions "あなたはソフトウェア開発のトリアージ担当です。必ずJSONで返してください。" \
+              --arg input "${prompt}" \
+              '{
+                model: $model,
+                instructions: $instructions,
+                input: $input,
+                text: { format: { type: "json_object" } },
+                max_output_tokens: 400
+              }')"
+
+            if openai_resp="$(curl -fsS https://api.openai.com/v1/responses \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+              -d "$openai_payload" 2>/dev/null)"; then
+              openai_text="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("")' <<<"$openai_resp" || true)"
+              if jq -e . >/dev/null 2>&1 <<<"$openai_text"; then
+                priority_opt="$(jq -r '.priority // "未定"' <<<"$openai_text")"
+                size_opt="$(jq -r '.size // "未定"' <<<"$openai_text")"
+                estimate_num="$(jq -r '.estimate // 0' <<<"$openai_text")"
+                reasoning="$(jq -r '.reasoning // "（推定理由なし）"' <<<"$openai_text")"
+              else
+                comment "AI の返答が JSON として解析できませんでした。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
+                exit 0
+              fi
+            else
+              comment "AI 推定に失敗しました（OpenAI API 呼び出しエラー）。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
+              exit 0
+            fi
+          else
+            comment "OPENAI_API_KEY が未設定のため、優先度/規模/Estimate を自動推定できません。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          # 簡易正規化（P0 のような短縮表記を許容）
+          case "$priority_opt" in
+            P0) priority_opt="P0: 緊急" ;;
+            P1) priority_opt="P1: 高" ;;
+            P2) priority_opt="P2: 中" ;;
+            P3) priority_opt="P3: 低" ;;
+          esac
+
+          # 選択肢IDを解決（無ければ提案コメント）
+          priority_option_id="$(option_id_by_name "${PRIORITY_FIELD_NAME}" "${priority_opt}")"
+          size_option_id="$(option_id_by_name "${SIZE_FIELD_NAME}" "${size_opt}")"
+
+          if [[ -z "${priority_option_id:-}" || -z "${size_option_id:-}" ]]; then
+            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 推定: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n- 根拠: ${reasoning}\n\nProject 側の選択肢名を合わせるか、workflow の推定ルールを調整してください。\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          # Estimate は整数に丸める（未数値は 0）
+          if ! [[ "${estimate_num}" =~ ^-?[0-9]+$ ]]; then
+            estimate_num=0
+          fi
+          if (( estimate_num < 0 )); then estimate_num=0; fi
+
+          update_mutation='
+            mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $value:ProjectV2FieldValue!){
+              updateProjectV2ItemFieldValue(input:{
+                projectId:$projectId,
+                itemId:$itemId,
+                fieldId:$fieldId,
+                value:$value
+              }){
+                projectV2Item { id }
+              }
+            }'
+
+          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
+              -F projectId="${project_id}" \
+              -F itemId="${item_id}" \
+              -F fieldId="${priority_field_id}" \
+              -f value="$(jq -nc --arg id "${priority_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
+            comment "Project の優先度フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 優先度=${priority_opt}\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
+              -F projectId="${project_id}" \
+              -F itemId="${item_id}" \
+              -F fieldId="${size_field_id}" \
+              -f value="$(jq -nc --arg id "${size_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
+            comment "Project の規模フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 規模=${size_opt}\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
+              -F projectId="${project_id}" \
+              -F itemId="${item_id}" \
+              -F fieldId="${estimate_field_id}" \
+              -f value="$(jq -nc --argjson n "${estimate_num}" '{number:$n}')" >/dev/null; then
+            comment "Project の Estimate フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: Estimate=${estimate_num}\n\nIssue: ${issue_url}"
+            exit 0
+          fi

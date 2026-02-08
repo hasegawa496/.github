@@ -1,10 +1,9 @@
-# GENERATED: scripts/sync-workflow-callers.sh により生成
 # ShellCheck（配布先へコピーして使う workflow）
 #
 # 推奨:
 #   - このファイルを対象リポジトリの `.github/workflows/shellcheck-ci.yml` としてコピーしてください。
 
-name: ShellCheck CI
+name: ShellCheck
 
 on:
   pull_request:
@@ -17,4 +16,4 @@ permissions:
 
 jobs:
   shellcheck:
-    uses: ./.github/workflows/shellcheck.yml
+    uses: hasegawa496/.github/.github/workflows/shellcheck.yml@main
