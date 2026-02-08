@@ -10,7 +10,7 @@ usage() {
 使い方: scripts/setup-triage-project-fields.sh
 
 Issue 作成/編集時に Project（Projects v2）へ自動追加し、
-Issue フォームの入力値（優先度/規模/Estimate）を Project フィールドへ反映する workflow を導入します。
+Issue フォームの入力値（優先度/Estimate）を Project フィールドへ反映する workflow を導入します。
 
 オプション:
   --strict  既存の workflow が想定と違う場合は中断します（デフォルトは警告して継続）
@@ -60,7 +60,6 @@ cat >"$expected_workflow" <<'YAML'
 #        - PROJECT_TOKEN: Projects v2 を更新できるトークン（PAT など）
 #   3) Projects v2 側にフィールドを作成（名前を揃える）
 #        - 優先度（Single select）
-#        - 規模（Single select）
 #        - Estimate（Number）
 
 name: Issueトリアージ（Projectフィールド自動設定）
@@ -80,7 +79,6 @@ jobs:
       project_number: 12
       # project_owner: hasegawa496
       # priority_field_name: 優先度
-      # size_field_name: 規模
       # estimate_field_name: Estimate
     secrets:
       project_token: ${{ secrets.PROJECT_TOKEN }}
@@ -162,7 +160,7 @@ fi
 
 gh pr create \
   --title "chore: Issue トリアージ workflow を追加" \
-  --body "Issue 作成/編集時に Projects v2 へ追加し、Issue フォーム（優先度/規模/Estimate）の値を Project フィールドへ反映します。\n\n前提:\n- Secrets: PROJECT_TOKEN\n- Project フィールド: 優先度/規模（Single select）, Estimate（Number）" \
+  --body "Issue 作成/編集時に Projects v2 へ追加し、Issue フォーム（優先度/Estimate）の値を Project フィールドへ反映します。\n\n前提:\n- Secrets: PROJECT_TOKEN\n- Project フィールド: 優先度（Single select）, Estimate（Number）" \
   --base "$default_branch" \
   --head "$branch" >/dev/null 2>&1 || true
 
@@ -206,6 +204,5 @@ fi
 echo "導入完了: Issue トリアージ（Projectフィールド自動設定）" >&2
 echo "次に行うこと（対象リポジトリ側）:" >&2
 echo "  1) Secrets に PROJECT_TOKEN を設定（Projects v2 へ書き込み可能な権限）" >&2
-echo "  2) Projects v2 側にフィールド（優先度/規模/Estimate）を作成" >&2
+echo "  2) Projects v2 側にフィールド（優先度/Estimate）を作成" >&2
 echo "  3) Issue を作成/編集して、Project フィールドが更新されるか確認" >&2
-

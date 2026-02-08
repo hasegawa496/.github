@@ -7,7 +7,7 @@
 - Issue テンプレートの共通化: `.github/ISSUE_TEMPLATE/`
   - `bug` / `feature` / `task` / `improvement` / `documentation`
   - 作成時に Project（`hasegawa496/12`）へ自動追加（権限の都合で追加されない場合があります）
-  - 共通項目: 優先度 / 規模 / Estimate
+  - 共通項目: 優先度 / Estimate
 - PR テンプレートの共通化: `.github/PULL_REQUEST_TEMPLATE.md`
 - ラベル定義の共通化: `.github/labels.yml`
 - ラベル同期（Reusable Workflow）: `.github/workflows/sync-labels.yml`
@@ -15,7 +15,7 @@
   - `delete-other-labels: true` のため、定義外ラベルは削除して定義のみ残します
 - ShellCheck（Reusable Workflow）: `.github/workflows/shellcheck.yml`
   - `scripts/*.sh` などのシェルスクリプトを静的解析します
-- Issue を Project に自動追加し、優先度/規模/Estimate を自動設定（Reusable Workflow）: `.github/workflows/triage-project-fields.yml`
+- Issue を Project に自動追加し、優先度/Estimate を自動設定（Reusable Workflow）: `.github/workflows/triage-project-fields.yml`
   - Issue 作成/編集をトリガに、Issue フォームの入力内容を Projects v2 のフィールドへ反映します
   - 利用テンプレ: `workflow-templates/triage-project-fields-issues.yml`
 

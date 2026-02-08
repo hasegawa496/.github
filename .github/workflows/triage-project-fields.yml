@@ -1,13 +1,12 @@
-# Issue を Project に追加し、優先度/規模/Estimate を自動設定する Reusable Workflow
+# Issue を Project に追加し、優先度/Estimate を自動設定する Reusable Workflow
 #
 # 目的:
 #   - Issue 作成時に Project（Projects v2）へ自動追加
-#   - Issue フォームの入力内容から Project のフィールドを更新（優先度/規模/Estimate）
+#   - Issue フォームの入力内容から Project のフィールドを更新（優先度/Estimate）
 #
 # 前提:
 #   - Projects v2 に以下のフィールドが存在すること
 #       - 優先度（Single select）
-#       - 規模（Single select）
 #       - Estimate（Number）
 #   - Project 更新には `project` 権限を持つトークン（PAT など）が必要になる場合があります
 #
@@ -33,11 +32,6 @@ on:
         required: false
         type: string
         default: 優先度
-      size_field_name:
-        description: 規模フィールド名（Single select）
-        required: false
-        type: string
-        default: 規模
       estimate_field_name:
         description: Estimate フィールド名（Number）
         required: false
@@ -64,7 +58,6 @@ jobs:
           PROJECT_OWNER: ${{ inputs.project_owner || github.repository_owner }}
           PROJECT_NUMBER: ${{ inputs.project_number }}
           PRIORITY_FIELD_NAME: ${{ inputs.priority_field_name }}
-          SIZE_FIELD_NAME: ${{ inputs.size_field_name }}
           ESTIMATE_FIELD_NAME: ${{ inputs.estimate_field_name }}
           PROJECT_TOKEN: ${{ secrets.project_token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,11 +89,10 @@ jobs:
           }
 
           priority_opt="$(extract_first_line_under_heading "優先度")"
-          size_opt="$(extract_first_line_under_heading "規模")"
           estimate_raw="$(extract_first_line_under_heading "Estimate")"
 
-          if [[ -z "${priority_opt:-}" || -z "${size_opt:-}" || -z "${estimate_raw:-}" ]]; then
-            comment "Issue フォームから「優先度/規模/Estimate」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。\n\n- 取得値: 優先度=${priority_opt:-（空）}, 規模=${size_opt:-（空）}, Estimate=${estimate_raw:-（空）}\n\nIssue: ${issue_url}"
+          if [[ -z "${priority_opt:-}" || -z "${estimate_raw:-}" ]]; then
+            comment "Issue フォームから「優先度/Estimate」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。\n\n- 取得値: 優先度=${priority_opt:-（空）}, Estimate=${estimate_raw:-（空）}\n\nIssue: ${issue_url}"
             exit 0
           fi
 
@@ -124,7 +116,7 @@ jobs:
           if (( estimate_num < 0 )); then estimate_num=0; fi
 
           if [[ -z "${PROJECT_TOKEN:-}" ]]; then
-            comment "Projects v2 を更新するためのトークンが未設定です。`PROJECT_TOKEN`（Project への書き込み権限）を設定してください。\n\n- 取得値: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n\nIssue: ${issue_url}"
+            comment "Projects v2 を更新するためのトークンが未設定です。`PROJECT_TOKEN`（Project への書き込み権限）を設定してください。\n\n- 取得値: 優先度=${priority_opt}, Estimate=${estimate_num}\n\nIssue: ${issue_url}"
             exit 0
           fi
 
@@ -172,12 +164,10 @@ jobs:
           }
 
           priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
-          size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
           estimate_field_id="$(field_id_by_name "${ESTIMATE_FIELD_NAME}")"
 
           missing=()
           [[ -z "${priority_field_id:-}" ]] && missing+=("${PRIORITY_FIELD_NAME}")
-          [[ -z "${size_field_id:-}" ]] && missing+=("${SIZE_FIELD_NAME}")
           [[ -z "${estimate_field_id:-}" ]] && missing+=("${ESTIMATE_FIELD_NAME}")
           if (( ${#missing[@]} > 0 )); then
             comment "Project「${project_title}」に必要なフィールドが見つかりません: ${missing[*]}。フィールド名を合わせるか、workflow の inputs（*_field_name）を調整してください。"
@@ -225,10 +215,9 @@ jobs:
 
           # 選択肢IDを解決（無ければ提案コメント）
           priority_option_id="$(option_id_by_name "${PRIORITY_FIELD_NAME}" "${priority_opt}")"
-          size_option_id="$(option_id_by_name "${SIZE_FIELD_NAME}" "${size_opt}")"
 
-          if [[ -z "${priority_option_id:-}" || -z "${size_option_id:-}" ]]; then
-            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 取得値: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n\nProject 側の選択肢名を合わせるか、Issue テンプレの選択肢名を調整してください。\n\nIssue: ${issue_url}"
+          if [[ -z "${priority_option_id:-}" ]]; then
+            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 取得値: 優先度=${priority_opt}, Estimate=${estimate_num}\n\nProject 側の選択肢名を合わせるか、Issue テンプレの選択肢名を調整してください。\n\nIssue: ${issue_url}"
             exit 0
           fi
 
@@ -250,15 +239,6 @@ jobs:
               -F fieldId="${priority_field_id}" \
               -f value="$(jq -nc --arg id "${priority_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
             comment "Project の優先度フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 優先度=${priority_opt}\n\nIssue: ${issue_url}"
-            exit 0
-          fi
-
-          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
-              -F projectId="${project_id}" \
-              -F itemId="${item_id}" \
-              -F fieldId="${size_field_id}" \
-              -f value="$(jq -nc --arg id "${size_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
-            comment "Project の規模フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 規模=${size_opt}\n\nIssue: ${issue_url}"
             exit 0
           fi
 

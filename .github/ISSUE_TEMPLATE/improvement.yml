@@ -25,21 +25,6 @@ body:
       required: true
 
   - type: dropdown
-    id: size
-    attributes:
-      label: 規模
-      options:
-        - 未定
-        - XS
-        - S
-        - M
-        - L
-        - XL
-      default: 0
-    validations:
-      required: true
-
-  - type: dropdown
     id: estimate
     attributes:
       label: Estimate
