@@ -39,6 +39,23 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Estimate
+      options:
+        - 未定
+        - 0
+        - 1
+        - 2
+        - 3
+        - 5
+        - 8
+        - 13
+      default: 0
+    validations:
+      required: true
+
   - type: textarea
     id: summary
     attributes:

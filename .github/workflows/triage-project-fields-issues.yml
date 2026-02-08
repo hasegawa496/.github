@@ -5,7 +5,6 @@
 #   1) このファイルを各リポジトリの `.github/workflows/triage-project-fields-issues.yml` へコピーして push
 #   2) リポジトリの Secrets に以下を設定
 #        - PROJECT_TOKEN: Projects v2 を更新できるトークン（PAT など）
-#        - OPENAI_API_KEY: OpenAI API キー
 #   3) Projects v2 側にフィールドを作成（名前を揃える）
 #        - 優先度（Single select）
 #        - 規模（Single select）
@@ -27,11 +26,8 @@ jobs:
     with:
       project_number: 12
       # project_owner: hasegawa496
-      # openai_model: gpt-4o-mini
       # priority_field_name: 優先度
       # size_field_name: 規模
       # estimate_field_name: Estimate
     secrets:
       project_token: ${{ secrets.PROJECT_TOKEN }}
-      openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-

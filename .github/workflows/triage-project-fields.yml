@@ -2,7 +2,7 @@
 #
 # 目的:
 #   - Issue 作成時に Project（Projects v2）へ自動追加
-#   - AI 推定で Project のフィールドを更新（優先度/規模/Estimate）
+#   - Issue フォームの入力内容から Project のフィールドを更新（優先度/規模/Estimate）
 #
 # 前提:
 #   - Projects v2 に以下のフィールドが存在すること
@@ -43,17 +43,9 @@ on:
         required: false
         type: string
         default: Estimate
-      openai_model:
-        description: OpenAI のモデル名
-        required: false
-        type: string
-        default: gpt-4o-mini
     secrets:
       project_token:
         description: Projects v2 更新用トークン（PAT など）
-        required: false
-      openai_api_key:
-        description: OpenAI API キー（未設定の場合は提案コメントのみ）
         required: false
 
 permissions:
@@ -74,9 +66,7 @@ jobs:
           PRIORITY_FIELD_NAME: ${{ inputs.priority_field_name }}
           SIZE_FIELD_NAME: ${{ inputs.size_field_name }}
           ESTIMATE_FIELD_NAME: ${{ inputs.estimate_field_name }}
-          OPENAI_MODEL: ${{ inputs.openai_model }}
           PROJECT_TOKEN: ${{ secrets.project_token }}
-          OPENAI_API_KEY: ${{ secrets.openai_api_key }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
@@ -87,15 +77,56 @@ jobs:
             GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" -f body="$body" >/dev/null || true
           }
 
-          if [[ -z "${PROJECT_TOKEN:-}" ]]; then
-            comment "Projects v2 を更新するためのトークンが未設定です。`PROJECT_TOKEN`（Project への書き込み権限）を設定してください。"
-            exit 0
-          fi
-
           issue_json="$(GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}")"
           issue_title="$(jq -r '.title // ""' <<<"$issue_json")"
           issue_body="$(jq -r '.body // ""' <<<"$issue_json")"
           issue_url="$(jq -r '.html_url // ""' <<<"$issue_json")"
+
+          extract_first_line_under_heading() {
+            local heading="$1"
+            awk -v h="### ${heading}" '
+              $0==h {in=1; next}
+              in && /^### / {exit}
+              in {
+                if ($0 ~ /^[[:space:]]*$/) next
+                print $0
+                exit
+              }
+            ' <<<"$issue_body"
+          }
+
+          priority_opt="$(extract_first_line_under_heading "優先度")"
+          size_opt="$(extract_first_line_under_heading "規模")"
+          estimate_raw="$(extract_first_line_under_heading "Estimate")"
+
+          if [[ -z "${priority_opt:-}" || -z "${size_opt:-}" || -z "${estimate_raw:-}" ]]; then
+            comment "Issue フォームから「優先度/規模/Estimate」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。\n\n- 取得値: 優先度=${priority_opt:-（空）}, 規模=${size_opt:-（空）}, Estimate=${estimate_raw:-（空）}\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          # 簡易正規化（P0 のような短縮表記を許容）
+          case "$priority_opt" in
+            P0) priority_opt="P0: 緊急" ;;
+            P1) priority_opt="P1: 高" ;;
+            P2) priority_opt="P2: 中" ;;
+            P3) priority_opt="P3: 低" ;;
+          esac
+
+          estimate_num=0
+          if [[ "${estimate_raw}" == "未定" ]]; then
+            estimate_num=0
+          elif [[ "${estimate_raw}" =~ ^-?[0-9]+$ ]]; then
+            estimate_num="${estimate_raw}"
+          else
+            # 数値以外は 0 扱い
+            estimate_num=0
+          fi
+          if (( estimate_num < 0 )); then estimate_num=0; fi
+
+          if [[ -z "${PROJECT_TOKEN:-}" ]]; then
+            comment "Projects v2 を更新するためのトークンが未設定です。`PROJECT_TOKEN`（Project への書き込み権限）を設定してください。\n\n- 取得値: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n\nIssue: ${issue_url}"
+            exit 0
+          fi
 
           project_query='
             query($owner:String!, $number:Int!){
@@ -192,92 +223,14 @@ jobs:
             item_id="$(jq -r '.data.addProjectV2ItemById.item.id // empty' <<<"$add_json")"
           fi
 
-          # AI 推定（JSON）
-          priority_opt="未定"
-          size_opt="未定"
-          estimate_num=0
-          reasoning="（推定理由なし）"
-
-          if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-            prompt="$(cat <<EOF
-          次の Issue を読み、Project のフィールドを設定するために JSON で出力してください。
-
-          # 出力形式（JSON）
-          {
-            "priority": "未定 | P0: 緊急 | P1: 高 | P2: 中 | P3: 低 | P0 | P1 | P2 | P3",
-            "size": "未定 | XS | S | M | L | XL",
-            "estimate": 0,
-            "reasoning": "短い根拠"
-          }
-
-          - priority と size は、可能なら Project 側の選択肢名に合わせてください（priority は P0/P1 のみでも可）。
-          - estimate は整数（例: 1, 2, 3, 5, 8, 13 など）で、分からなければ 0。
-          - 必ず JSON のみを返してください。
-
-          # Issue
-          タイトル: ${issue_title}
-          本文:
-          ${issue_body}
-          EOF
-          )"
-
-            openai_payload="$(jq -n \
-              --arg model "${OPENAI_MODEL}" \
-              --arg instructions "あなたはソフトウェア開発のトリアージ担当です。必ずJSONで返してください。" \
-              --arg input "${prompt}" \
-              '{
-                model: $model,
-                instructions: $instructions,
-                input: $input,
-                text: { format: { type: "json_object" } },
-                max_output_tokens: 400
-              }')"
-
-            if openai_resp="$(curl -fsS https://api.openai.com/v1/responses \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
-              -d "$openai_payload" 2>/dev/null)"; then
-              openai_text="$(jq -r '[.output[]? | select(.type=="message") | .content[]? | select(.type=="output_text") | .text] | join("")' <<<"$openai_resp" || true)"
-              if jq -e . >/dev/null 2>&1 <<<"$openai_text"; then
-                priority_opt="$(jq -r '.priority // "未定"' <<<"$openai_text")"
-                size_opt="$(jq -r '.size // "未定"' <<<"$openai_text")"
-                estimate_num="$(jq -r '.estimate // 0' <<<"$openai_text")"
-                reasoning="$(jq -r '.reasoning // "（推定理由なし）"' <<<"$openai_text")"
-              else
-                comment "AI の返答が JSON として解析できませんでした。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
-                exit 0
-              fi
-            else
-              comment "AI 推定に失敗しました（OpenAI API 呼び出しエラー）。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
-              exit 0
-            fi
-          else
-            comment "OPENAI_API_KEY が未設定のため、優先度/規模/Estimate を自動推定できません。手動で Project フィールドを設定してください。\n\nIssue: ${issue_url}"
-            exit 0
-          fi
-
-          # 簡易正規化（P0 のような短縮表記を許容）
-          case "$priority_opt" in
-            P0) priority_opt="P0: 緊急" ;;
-            P1) priority_opt="P1: 高" ;;
-            P2) priority_opt="P2: 中" ;;
-            P3) priority_opt="P3: 低" ;;
-          esac
-
           # 選択肢IDを解決（無ければ提案コメント）
           priority_option_id="$(option_id_by_name "${PRIORITY_FIELD_NAME}" "${priority_opt}")"
           size_option_id="$(option_id_by_name "${SIZE_FIELD_NAME}" "${size_opt}")"
 
           if [[ -z "${priority_option_id:-}" || -z "${size_option_id:-}" ]]; then
-            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 推定: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n- 根拠: ${reasoning}\n\nProject 側の選択肢名を合わせるか、workflow の推定ルールを調整してください。\n\nIssue: ${issue_url}"
+            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 取得値: 優先度=${priority_opt}, 規模=${size_opt}, Estimate=${estimate_num}\n\nProject 側の選択肢名を合わせるか、Issue テンプレの選択肢名を調整してください。\n\nIssue: ${issue_url}"
             exit 0
           fi
-
-          # Estimate は整数に丸める（未数値は 0）
-          if ! [[ "${estimate_num}" =~ ^-?[0-9]+$ ]]; then
-            estimate_num=0
-          fi
-          if (( estimate_num < 0 )); then estimate_num=0; fi
 
           update_mutation='
             mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $value:ProjectV2FieldValue!){

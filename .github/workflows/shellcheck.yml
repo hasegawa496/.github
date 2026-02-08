@@ -23,8 +23,7 @@ jobs:
         run: |
           mapfile -d '' files < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
           if [[ "${#files[@]}" -eq 0 ]]; then
-            echo "No .sh files found; skipping."
+            echo ".sh ファイルが見つからないため、スキップします。"
             exit 0
           fi
           shellcheck -x "${files[@]}"
-
