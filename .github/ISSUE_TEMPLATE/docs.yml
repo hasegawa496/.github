@@ -1,9 +1,46 @@
 name: 📝 文書
 description: ドキュメントの追加・修正を記録する
 labels: ["documentation"]
+projects: ["hasegawa496/12"]
 assignees: ["hasegawa496"]
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        この Issue は作成時に Project（`hasegawa496/12`）へ自動で追加されます（権限の都合で追加されない場合があります）。
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      options:
+        - 未定
+        - "P0: 緊急"
+        - "P1: 高"
+        - "P2: 中"
+        - "P3: 低"
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Estimate
+      options:
+        - 未定
+        - 0
+        - 1
+        - 2
+        - 3
+        - 5
+        - 8
+        - 13
+      default: 0
+    validations:
+      required: true
+
   - type: textarea
     id: summary
     attributes:

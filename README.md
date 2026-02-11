@@ -6,6 +6,8 @@
 
 - Issue テンプレートの共通化: `.github/ISSUE_TEMPLATE/`
   - `bug` / `feature` / `task` / `improvement` / `documentation`
+  - 作成時に Project（`hasegawa496/12`）へ自動追加（権限の都合で追加されない場合があります）
+  - 共通項目: 優先度 / Estimate
 - PR テンプレートの共通化: `.github/PULL_REQUEST_TEMPLATE.md`
 - ラベル定義の共通化: `.github/labels.yml`
 - ラベル同期（Reusable Workflow）: `.github/workflows/sync-labels.yml`
@@ -13,6 +15,9 @@
   - `delete-other-labels: true` のため、定義外ラベルは削除して定義のみ残します
 - ShellCheck（Reusable Workflow）: `.github/workflows/shellcheck.yml`
   - `scripts/*.sh` などのシェルスクリプトを静的解析します
+- Issue を Project に自動追加し、優先度/Estimate を自動設定（Reusable Workflow）: `.github/workflows/triage-project-fields.yml`
+  - Issue 作成/編集をトリガに、Issue フォームの入力内容を Projects v2 のフィールドへ反映します
+  - 利用テンプレ: `workflow-templates/triage-project-fields-issues.yml`
 
 ## 使い方
 
@@ -53,8 +58,42 @@ bash /tmp/setup-label-sync.sh
 
 ### 3) ShellCheck
 
-対象リポジトリに、`workflow-templates/shellcheck.yml` を `.github/workflows/shellcheck.yml` としてコピーして push します。
+対象リポジトリに、`workflow-templates/shellcheck-ci.yml` を `.github/workflows/shellcheck-ci.yml` としてコピーして push します。
 PR / push で自動的に ShellCheck が走ります。
+
+## 運用ルール（配置・命名）
+
+このリポジトリは「配布元（Reusable Workflow / community health files）」と「配布先へコピーするテンプレ」を同居させています。
+同名ファイルがあっても役割が異なるため、内容が似ることがあります。
+
+- `.github/workflows/*.yml`
+  - **Reusable Workflow（`on: workflow_call`）** と、このリポジトリ自身の CI を置きます。
+  - 他リポジトリからは `uses: hasegawa496/.github/.github/workflows/<file>.yml@<ref>` で参照されます。
+- `workflow-templates/*.yml`
+  - **配布先リポジトリへコピーして使う Workflow** を置きます（`workflow_dispatch` / `pull_request` など）。
+  - `uses:` でこのリポジトリの Reusable Workflow を呼び出します。
+
+### シンボリックリンクについて
+
+GitHub Actions / テンプレ配布の都合上、`workflow-templates/` と `.github/workflows/` の間をシンボリックリンクで共通化する運用は推奨しません。
+共通化したい場合は「テンプレを生成/検証するスクリプト」で担保します。
+
+### テンプレの同期
+
+配布テンプレ（`workflow-templates/`）を編集した場合、このリポジトリ自身の呼び出し側 workflow（`.github/workflows/*-ci.yml` 等）は同期してズレを防ぎます。
+
+```bash
+scripts/sync-workflow-callers.sh --write
+scripts/check-workflow-templates.sh
+```
+
+### 命名規則（推奨）
+
+- ファイル名は `kebab-case.yml`（ASCII）で統一します。
+- Reusable Workflow とテンプレは、対応が分かるように **同じベース名**にします。
+  - 例: `.github/workflows/shellcheck.yml`（Reusable） ↔ `workflow-templates/shellcheck-ci.yml`（配布先にコピーする側）
+- このリポジトリ自身の CI 用 workflow は `*-ci.yml` を付けます（例: `.github/workflows/shellcheck-ci.yml`）。
+  - 配布先へコピーするテンプレも、呼び出し側は `*-ci.yml` / `*-manual.yml` のように用途が分かる名前を推奨します。
 
 ## 変更の目安
 

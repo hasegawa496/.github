@@ -1,0 +1,30 @@
+# Issue 作成/編集時に Project へ自動追加し、優先度/Estimate を自動設定します
+#
+# 使い方:
+#   1) このファイルを各リポジトリの `.github/workflows/triage-project-fields-issues.yml` へコピーして push
+#   2) リポジトリの Secrets に以下を設定
+#        - PROJECT_TOKEN: Projects v2 を更新できるトークン（PAT など）
+#   3) Projects v2 側にフィールドを作成（名前を揃える）
+#        - 優先度（Single select）
+#        - Estimate（Number）
+
+name: Issueトリアージ（Projectフィールド自動設定）
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    uses: hasegawa496/.github/.github/workflows/triage-project-fields.yml@main
+    with:
+      project_number: 12
+      # project_owner: hasegawa496
+      # priority_field_name: 優先度
+      # estimate_field_name: Estimate
+    secrets:
+      project_token: ${{ secrets.PROJECT_TOKEN }}
