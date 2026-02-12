@@ -7,7 +7,7 @@
 - `.github/ISSUE_TEMPLATE/*.yml`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 
-## 非対象（my-life へ移管済み）
+## 非対象
 
 - Reusable Workflow
 - ラベル定義/同期
