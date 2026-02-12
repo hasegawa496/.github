@@ -9,4 +9,4 @@
 
 ## 管理しないもの（移管済み）
 
-Reusable Workflow・運用スクリプト・ラベル運用は `hasegawa496/my-life` で管理します。
+Reusable Workflow・運用スクリプト・ラベル運用は管理しません。
