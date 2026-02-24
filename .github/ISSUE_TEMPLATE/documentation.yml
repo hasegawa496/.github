@@ -25,19 +25,16 @@ body:
       required: true
 
   - type: dropdown
-    id: estimate
+    id: size
     attributes:
-      label: Estimate
+      label: Size
       options:
-        - 未定
-        - 0
-        - 1
-        - 2
-        - 3
-        - 5
-        - 8
-        - 13
-      default: 0
+        - XS
+        - S
+        - M
+        - L
+        - XL
+      default: 2
     validations:
       required: true
 
