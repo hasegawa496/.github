@@ -1,0 +1,24 @@
+# GENERATED: scripts/sync-workflow-callers.sh により生成
+# ラベル同期（手動実行）
+#
+# 使用方法:
+#   1. このファイルを対象リポジトリの .github/workflows/label-sync.yml にコピー
+#   2. Actions > Label Sync > Run workflow で手動実行
+#
+# 呼び出し先:
+#   - hasegawa496/.github/.github/workflows/label-sync-wc.yml（Reusable Workflow）
+#   - hasegawa496/.github/.github/labels.yml（ラベル定義）
+
+name: Label Sync
+
+on:
+  workflow_dispatch:  # 手動実行
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    uses: ./.github/workflows/label-sync-wc.yml
+    secrets: inherit

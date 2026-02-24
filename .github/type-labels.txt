@@ -1,0 +1,5 @@
+bug
+feature
+task
+improvement
+documentation

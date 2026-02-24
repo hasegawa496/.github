@@ -1,0 +1,41 @@
+# ラベル定義（個人開発向けシンプル構成）
+#
+# 参照元:
+#   - hasegawa496/.github/.github/workflows/label-sync-wc.yml（ラベル同期ワークフロー）
+#
+# type ラベルの管理対象は .github/type-labels.txt で定義します。
+# status ラベルは固定運用（Issue テンプレートとは無関係）です。
+
+# type ラベル
+- name: bug
+  color: "d73a4a"
+  description: "バグ・不具合。動作しない、エラーが出るなど"
+
+- name: feature
+  color: "a2eeef"
+  description: "新機能・機能強化"
+
+- name: task
+  color: "0075ca"
+  description: "作業タスク。調査、設定変更、ドキュメント作成など"
+
+- name: improvement
+  color: "7057ff"
+  description: "改善・リファクタリング。既存機能の最適化など"
+
+- name: documentation
+  color: "1d76db"
+  description: "ドキュメントの追加・修正"
+
+# status ラベル
+- name: duplicate
+  color: "cfd3d7"
+  description: "重複。既に同じイシュー/PRがある"
+
+- name: wontfix
+  color: "ffffff"
+  description: "対応しない。仕様通り、スコープ外など"
+
+- name: revisit-later
+  color: "d4c5f9"
+  description: "将来再検討。一旦クローズ"

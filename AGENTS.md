@@ -1,17 +1,17 @@
 # hasegawa496/.github – Agent guide
 
-このリポジトリは `<owner>/.github` のデフォルト community health files 管理専用です。
+このリポジトリは `hasegawa496` 配下向けの共通資産を管理します。
 
 ## 管理対象
 
 - `.github/ISSUE_TEMPLATE/*.yml`
 - `.github/PULL_REQUEST_TEMPLATE.md`
-
-## 非対象
-
-- Reusable Workflow
-- ラベル定義/同期
-- 運用スクリプト
+- `.github/labels.yml`
+- `.github/type-labels.txt`
+- `.github/workflows/*-wc.yml`（Reusable Workflow）
+- `workflow-templates/*.yml`（配布テンプレ）
+- `scripts/`（導入/同期補助）
+- `docs/github-workflow-operations.md`
 
 ## 作業ルール
 
