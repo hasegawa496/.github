@@ -25,4 +25,4 @@
 
 他リポジトリから Reusable Workflow を利用する場合は以下を参照します。
 
-- `uses: hasegawa496/.github/.github/workflows/<file>.yml@main`
+- `uses: hasegawa496/.github/.github/workflows/<file>.yml@v1`

@@ -44,10 +44,10 @@ render() {
 
   # Reusable Workflow の参照をローカル参照に差し替える（配布先では使えないため）
   # 例:
-  #   uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@main
+  #   uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@v1
   #   uses: ./.github/workflows/shellcheck-wc.yml
   sed -i \
-    -e "s#uses: \\s*hasegawa496/.github/\\.github/workflows/[^[:space:]]\\+@main#uses: ${local_uses}#g" \
+    -e "s#uses: \\s*hasegawa496/.github/\\.github/workflows/[^[:space:]]\\+@v1#uses: ${local_uses}#g" \
     "$out"
 
   if [[ -n "${name_override:-}" ]]; then

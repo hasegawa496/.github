@@ -30,7 +30,7 @@
 
 - `.github/workflows/*.yml`
   - Reusable Workflow（`on: workflow_call`）と、このリポジトリ自身の CI を配置
-  - 他リポジトリからは `uses: hasegawa496/.github/.github/workflows/<file>.yml@main` で参照
+  - 他リポジトリからは `uses: hasegawa496/.github/.github/workflows/<file>.yml@v1` で参照
 - `workflow-templates/*.yml`
   - 配布先へコピーして使う workflow を配置
   - `uses:` で Reusable Workflow を呼び出す

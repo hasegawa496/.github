@@ -22,10 +22,10 @@ for file in "${templates[@]}"; do
     errors=$((errors + 1))
   fi
 
-  # 2) この repo の reusable workflow を参照する場合は @main を付けること
+  # 2) この repo の reusable workflow を参照する場合は @v1 を付けること
   #   （配布先がコピーして使う想定のため、ref を明示しないと動かない）
   if rg -n "uses:\\s*hasegawa496/.github/\\.github/workflows/[^\\s@]+\\.yml(\\s|$)" "$file" >/dev/null; then
-    echo "NG: $file: uses に @<ref> がありません（例: @main）" >&2
+    echo "NG: $file: uses に @<ref> がありません（例: @v1）" >&2
     errors=$((errors + 1))
   fi
 done
