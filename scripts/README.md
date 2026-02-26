@@ -9,5 +9,5 @@
 - `setup-label-sync.sh`: ラベル同期 workflow を導入/更新し、起動（引数なし）
 - `setup-triage-project-fields.sh`: Issue トリアージ workflow を導入/更新（引数なし）
 - `sync-workflow-callers.sh`: `workflow-templates/` を元に `.github/workflows/` の呼び出し側 workflow を同期
-- `check-workflow-templates.sh`: `workflow-templates/` の簡易検証（ローカル参照の混在チェック、`@v1` の有無など）
+- `check-workflow-templates.sh`: `workflow-templates/` の簡易検証（ローカル参照の混在チェック、`@v1.0.0` の有無など）
 - `lib/common.sh`: 共通関数（`cd_repo_root`, `ensure_gh_auth`, `ensure_actions_enabled` など）

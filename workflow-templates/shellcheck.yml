@@ -16,4 +16,4 @@ permissions:
 
 jobs:
   shellcheck:
-    uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@v1
+    uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@v1.0.0

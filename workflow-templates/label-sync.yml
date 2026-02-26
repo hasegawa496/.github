@@ -19,5 +19,5 @@ permissions:
 
 jobs:
   sync:
-    uses: hasegawa496/.github/.github/workflows/label-sync-wc.yml@v1
+    uses: hasegawa496/.github/.github/workflows/label-sync-wc.yml@v1.0.0
     secrets: inherit
