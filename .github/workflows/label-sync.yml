@@ -1,3 +1,4 @@
+# GENERATED: scripts/sync-workflow-callers.sh により生成
 # ラベル同期（手動実行）
 #
 # 使用方法:
@@ -19,5 +20,5 @@ permissions:
 
 jobs:
   sync:
-    uses: hasegawa496/.github/.github/workflows/label-sync-wc.yml@v1.0.0
+    uses: ./.github/workflows/label-sync-wc.yml
     secrets: inherit
