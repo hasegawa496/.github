@@ -4,8 +4,9 @@
 
 ## 一覧
 
-- `setup.sh`: 標準構成のまとめ実行（設定 → ラベル同期、引数なし）
+- `setup.sh`: 標準構成のまとめ実行（設定 → Dependabot → ラベル同期、引数なし）
 - `setup-repo-settings.sh`: リポジトリ設定の初期化（ブランチ自動削除など、引数なし）
+- `setup-dependabot.sh`: Dependabot 設定を導入/更新し、PR を自動マージ（引数なし）
 - `setup-label-sync.sh`: ラベル同期 workflow を導入/更新し、起動（引数なし）
 - `setup-triage-project-fields.sh`: Issue トリアージ workflow を導入/更新（引数なし）
 - `sync-workflow-callers.sh`: `workflow-templates/` を元に `.github/workflows/` の呼び出し側 workflow を同期

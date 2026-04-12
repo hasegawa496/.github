@@ -16,12 +16,18 @@
 
 - `scripts/setup-label-sync.sh` を配布先リポジトリのルートで実行
 
-### 2) シェルスクリプト静的解析（ShellCheck）
+### 2) Dependabot
+
+- `.github/dependabot.yml` を配布先の `.github/dependabot.yml` として配置
+- 自動導入する場合は `scripts/setup-dependabot.sh` を配布先リポジトリのルートで実行
+- 導入 PR はスクリプトが作成後に自動マージする
+
+### 3) シェルスクリプト静的解析（ShellCheck）
 
 - `workflow-templates/shellcheck.yml` を配布先の `.github/workflows/shellcheck.yml` として配置
 - PR / push で自動実行
 
-### 3) Issueトリアージ（Projectフィールド自動設定）
+### 4) Issueトリアージ（Projectフィールド自動設定）
 
 - `workflow-templates/triage.yml` を配布先の `.github/workflows/triage.yml` として配置
 - スクリプト導入する場合は `scripts/setup-triage-project-fields.sh` を配布先ルートで実行

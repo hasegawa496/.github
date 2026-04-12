@@ -8,4 +8,5 @@ source "$script_dir/lib/common.sh"
 assert_no_args "$@"
 
 "$script_dir/setup-repo-settings.sh"
+"$script_dir/setup-dependabot.sh"
 "$script_dir/setup-label-sync.sh"
