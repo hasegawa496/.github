@@ -32,7 +32,7 @@
   color: "e4e669"
   description: "仕様詰めが必要。AIが設計を掘り下げ、人間レビュー待ちに移行する"
 
-- name: awaiting-review
+- name: needs-review
   color: "fbca04"
   description: "AI処理済み。人間レビュー待ち。ラベルを外すと通常実装フローへ"
 
