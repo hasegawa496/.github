@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# pre-commit: ステージング済みの .sh ファイルに shellcheck を実行する
+set -euo pipefail
+
+if ! command -v shellcheck >/dev/null 2>&1; then
+  echo "[pre-commit] shellcheck が見つかりません。スキップします。（brew/apt install shellcheck）"
+  exit 0
+fi
+
+mapfile -t staged_sh < <(git diff --cached --name-only --diff-filter=ACM | grep '\.sh$' || true)
+
+if [[ ${#staged_sh[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+echo "[pre-commit] shellcheck: ${staged_sh[*]}"
+shellcheck -x "${staged_sh[@]}"

@@ -39,7 +39,8 @@ render() {
 
   [[ -f "$src" ]] || die "見つかりません: $src"
 
-  local out="$tmp_dir/$(basename "$dst")"
+  local out
+  out="$tmp_dir/$(basename "$dst")"
   cp "$src" "$out"
 
   # Reusable Workflow の参照をローカル参照に差し替える（配布先では使えないため）
