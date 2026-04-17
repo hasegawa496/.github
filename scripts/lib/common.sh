@@ -31,14 +31,14 @@ cd_repo_root() {
     die "git リポジトリのルートを取得できませんでした。"
   fi
 
-  cd "$repo_root"
+  cd "$repo_root" || exit 1
 }
 
 ensure_gh_auth() {
   require_cmd gh
 
   if ! gh auth status >/dev/null 2>&1; then
-    die "gh の認証ができていません。`gh auth login` を実行してください。"
+    die "gh の認証ができていません。'gh auth login' を実行してください。"
   fi
 }
 

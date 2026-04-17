@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck disable=SC1007
 script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
+# shellcheck source=scripts/lib/common.sh
 source "$script_dir/lib/common.sh"
 
 assert_no_args "$@"
 cd_repo_root
 ensure_gh_auth
 
-repo_full="$(get_repo_full)"
 
 default_branch="$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"
 default_branch="${default_branch:-main}"
