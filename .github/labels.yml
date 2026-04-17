@@ -27,6 +27,15 @@
   color: "1d76db"
   description: "ドキュメントの追加・修正"
 
+# patrol ラベル（Issue巡回フロー用）
+- name: needs-design
+  color: "e4e669"
+  description: "仕様詰めが必要。AIが設計を掘り下げ、人間レビュー待ちに移行する"
+
+- name: awaiting-review
+  color: "fbca04"
+  description: "AI処理済み。人間レビュー待ち。ラベルを外すと通常実装フローへ"
+
 # status ラベル
 - name: duplicate
   color: "cfd3d7"
