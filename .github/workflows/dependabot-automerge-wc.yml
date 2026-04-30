@@ -1,0 +1,51 @@
+# Dependabot 自動マージ Reusable Workflow
+#
+# 対象:
+#   - github-actions の patch / minor 更新
+#   - セキュリティ更新 PR (automated_security_fixes 経由)
+#   - npm / pip などのパッケージマネージャーの patch 更新
+#
+# 使用方法:
+#   各リポジトリの .github/workflows/dependabot-automerge.yml から呼び出す
+#   例: hasegawa496/my-life の .github/workflows/dependabot-automerge.yml を参照
+
+name: Dependabot Auto-merge (Reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Auto-merge github-actions patch/minor updates
+        if: |
+          steps.metadata.outputs.package-ecosystem == 'github_actions' &&
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor')
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-merge package manager patch updates (direct dependencies)
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' &&
+          (steps.metadata.outputs.dependency-type == 'direct:production' ||
+           steps.metadata.outputs.dependency-type == 'direct:development') &&
+          contains(fromJSON('["npm", "pip", "cargo", "composer", "nuget", "bundler", "gomod"]'), steps.metadata.outputs.package-ecosystem)
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
