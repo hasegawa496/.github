@@ -30,11 +30,15 @@
 # patrol ラベル（Issue巡回フロー用）
 - name: needs-design
   color: "e4e669"
-  description: "仕様詰めが必要。AIが設計を掘り下げ、人間レビュー待ちに移行する"
+  description: "仕様不足、または調査・比較に少し時間がかかる。AIが後続で設計を深掘りする"
 
 - name: needs-review
   color: "fbca04"
-  description: "AI処理済み。人間レビュー待ち。ラベルを外すと通常実装フローへ"
+  description: "人間の最終判断待ち。実装前に論点整理済みの Issue をレビューキューとして保持する"
+
+- name: patrol-deferred
+  color: "bfd4f2"
+  description: "依存先の open Issue などがあり、patrol では今は後回しにする"
 
 # status ラベル
 - name: duplicate
