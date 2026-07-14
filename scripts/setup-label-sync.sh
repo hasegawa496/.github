@@ -71,13 +71,14 @@ ensure_gh_auth
 
 repo_full="$(get_repo_full)"
 
-if is_self_managed_caller_repo "$repo_full"; then
-  echo "${repo_full} は呼び出し側 workflow を scripts/sync-workflow-callers.sh で自己管理するため、導入をスキップします。" >&2
-  exit 0
-fi
-
 default_branch="$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name' 2>/dev/null || true)"
 default_branch="${default_branch:-main}"
+
+if is_self_managed_caller_repo "$repo_full"; then
+  echo "${repo_full} は呼び出し側 workflow を scripts/sync-workflow-callers.sh で自己管理するため、テンプレート導入はスキップし、起動のみ行います。" >&2
+  run_label_sync_workflow "$default_branch"
+  exit $?
+fi
 
 # このスクリプト自身（my-life）のテンプレートを正本として利用する。
 # 想定実行: my-life を clone した状態で、対象リポジトリ上から相対/絶対パスで本スクリプトを呼ぶ。
