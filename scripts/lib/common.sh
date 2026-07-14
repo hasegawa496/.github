@@ -42,6 +42,16 @@ ensure_gh_auth() {
   fi
 }
 
+SELF_MANAGED_CALLER_REPO="hasegawa496/.github"
+
+# hasegawa496/.github 自身の呼び出し側 workflow（label-sync.yml 等）は、
+# 配布用テンプレート（cross-repo参照）ではなく scripts/sync-workflow-callers.sh が
+# ローカル参照版を自己管理している。caller workflow を配布する setup-*.sh は、
+# 対象がこの repo 自身のときだけこの関数で早期スキップする。
+is_self_managed_caller_repo() {
+  [[ "$1" == "$SELF_MANAGED_CALLER_REPO" ]]
+}
+
 get_repo_full() {
   local repo_full
   repo_full="$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || true)"
