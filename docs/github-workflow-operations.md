@@ -15,6 +15,7 @@
 自動導入する場合:
 
 - `scripts/setup-label-sync.sh` を配布先リポジトリのルートで実行
+- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済み
 
 ### 2) Dependabot
 
@@ -31,9 +32,10 @@
 
 - `workflow-templates/triage.yml` を配布先の `.github/workflows/triage.yml` として配置
 - スクリプト導入する場合は `scripts/setup-triage-project-fields.sh` を配布先ルートで実行
+- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済み
 - 前提として、配布先repoに Projects v2 書き込み権限を持つ `PROJECT_TOKEN` secret が設定済みであること
   - `PROJECT_TOKEN` の発行・全repoへの一括配布は `hasegawa496/repo-ops` 側で一元管理する（`scripts/setup-project-token-secrets.sh` を参照）
-  - 未設定のまま workflow を導入すると、Issue作成/編集時のトリアージ実行が失敗する
+  - 未設定のまま workflow を導入しても導入自体は失敗しない。Issue作成/編集時のトリアージ実行時にフォールバックコメントが付くだけで、`PROJECT_TOKEN` を後から設定すれば動くようになる
 
 ### 5) Dependabot 自動マージ
 
