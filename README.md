@@ -14,6 +14,7 @@
   - `.github/workflows/label-sync-wc.yml`
   - `.github/workflows/shellcheck-wc.yml`
   - `.github/workflows/triage-wc.yml`
+  - `.github/workflows/dependabot-automerge-wc.yml`
 - 配布テンプレート
   - `workflow-templates/*.yml`
 - 導入/同期スクリプト

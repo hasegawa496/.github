@@ -36,6 +36,7 @@ render() {
   local dst="$2"
   local local_uses="$3"
   local name_override="${4:-}"
+  local workflows_override="${5:-}"
 
   [[ -f "$src" ]] || die "見つかりません: $src"
 
@@ -48,11 +49,15 @@ render() {
   #   uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@v1
   #   uses: ./.github/workflows/shellcheck-wc.yml
   sed -i \
-    -e "s#uses: \\s*hasegawa496/.github/\\.github/workflows/[^[:space:]]\\+@v1#uses: ${local_uses}#g" \
+    -e "s#uses:[[:space:]]*hasegawa496/\\.github/\\.github/workflows/[^[:space:]@]\\+\\.yml@[^[:space:]]\\+#uses: ${local_uses}#g" \
     "$out"
 
   if [[ -n "${name_override:-}" ]]; then
     sed -i -e "s#^name: .*#name: ${name_override}#g" "$out"
+  fi
+
+  if [[ -n "${workflows_override:-}" ]]; then
+    sed -i -e "s#workflows: \\[\"CI\"\\]#workflows: [\"${workflows_override}\"]#" "$out"
   fi
 
   # 生成物であることを明示（先頭に短い注記を挿入）
@@ -79,5 +84,6 @@ render() {
 render "workflow-templates/shellcheck.yml" ".github/workflows/shellcheck.yml" "./.github/workflows/shellcheck-wc.yml"
 render "workflow-templates/label-sync.yml" ".github/workflows/label-sync.yml" "./.github/workflows/label-sync-wc.yml"
 render "workflow-templates/triage.yml" ".github/workflows/triage.yml" "./.github/workflows/triage-wc.yml"
+render "workflow-templates/dependabot-automerge.yml" ".github/workflows/dependabot-automerge.yml" "./.github/workflows/dependabot-automerge-wc.yml" "" "ShellCheck"
 
 echo "OK: 呼び出し側 workflow を同期しました（$mode）"

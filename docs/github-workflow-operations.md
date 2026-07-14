@@ -35,6 +35,13 @@
   - `PROJECT_TOKEN` の発行・全repoへの一括配布は `hasegawa496/repo-ops` 側で一元管理する（`scripts/setup-project-token-secrets.sh` を参照）
   - 未設定のまま workflow を導入すると、Issue作成/編集時のトリアージ実行が失敗する
 
+### 5) Dependabot 自動マージ
+
+- `workflow-templates/dependabot-automerge.yml` を配布先の `.github/workflows/dependabot-automerge.yml` として配置し、`on.workflow_run.workflows` に配布先の CI workflow 名を指定する
+- 自動導入する場合は `CI_WORKFLOW_NAME=<CI workflow の name>` を指定して `scripts/setup-dependabot-automerge.sh` を配布先ルートで実行（未指定時は既定値 `CI`）
+- CI workflow を持たない配布先には導入しても発火しない（安全側の挙動）。配布先ごとの導入要否・CI workflow 名の棚卸しは `hasegawa496/repo-ops` の `docs/dependabot-operations.md` 側で管理する
+- 導入 PR はスクリプトが作成後に自動マージする
+
 ## 運用ルール（配置・命名）
 
 - `.github/workflows/*.yml`
