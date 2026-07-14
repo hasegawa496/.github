@@ -1,0 +1,28 @@
+# GENERATED: scripts/sync-workflow-callers.sh により生成
+# Dependabot 自動マージ（配布先へコピーして使う workflow）
+#
+# 使い方:
+#   1) このファイルを各リポジトリの `.github/workflows/dependabot-automerge.yml` へコピーして push
+#      （自動導入する場合は `scripts/setup-dependabot-automerge.sh` を配布先ルートで実行）
+#   2) `workflows:` に、そのリポジトリの CI workflow の `name:`（見出しの workflow 名）を指定する
+#      - CI workflow を持たないリポジトリでは、このファイルを導入しても発火しない（安全側の挙動）
+#
+# 対象:
+#   - dependabot が作成した PR に紐づく CI workflow が成功した場合、
+#     patch / minor / major の区別なく無条件でマージする
+
+name: Dependabot Auto-merge
+
+on:
+  workflow_run:
+    workflows: ["ShellCheck"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    uses: ./.github/workflows/dependabot-automerge-wc.yml
+    secrets: inherit
