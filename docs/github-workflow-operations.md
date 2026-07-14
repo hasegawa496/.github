@@ -38,7 +38,8 @@
 ### 5) Dependabot 自動マージ
 
 - `workflow-templates/dependabot-automerge.yml` を配布先の `.github/workflows/dependabot-automerge.yml` として配置し、`on.workflow_run.workflows` に配布先の CI workflow 名を指定する
-- 自動導入する場合は `CI_WORKFLOW_NAME=<CI workflow の name>` を指定して `scripts/setup-dependabot-automerge.sh` を配布先ルートで実行（未指定時は既定値 `CI`）
+- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済みで、既定値 `CI` で導入される
+- CI workflow 名が `CI` と異なる配布先は、`CI_WORKFLOW_NAME=<CI workflow の name>` を指定して `scripts/setup-dependabot-automerge.sh` を配布先ルートで個別実行する
 - CI workflow を持たない配布先には導入しても発火しない（安全側の挙動）。配布先ごとの導入要否・CI workflow 名の棚卸しは `hasegawa496/repo-ops` の `docs/dependabot-operations.md` 側で管理する
 - 導入 PR はスクリプトが作成後に自動マージする
 

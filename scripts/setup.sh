@@ -11,6 +11,7 @@ assert_no_args "$@"
 "$script_dir/setup-repo-settings.sh"
 "$script_dir/setup-dependabot.sh"
 "$script_dir/setup-label-sync.sh"
+"$script_dir/setup-dependabot-automerge.sh"
 
 # git hooks を有効化する（コミット前に shellcheck を自動実行）
 git config core.hooksPath .githooks
