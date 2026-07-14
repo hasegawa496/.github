@@ -31,6 +31,9 @@
 
 - `workflow-templates/triage.yml` を配布先の `.github/workflows/triage.yml` として配置
 - スクリプト導入する場合は `scripts/setup-triage-project-fields.sh` を配布先ルートで実行
+- 前提として、配布先repoに Projects v2 書き込み権限を持つ `PROJECT_TOKEN` secret が設定済みであること
+  - `PROJECT_TOKEN` の発行・全repoへの一括配布は `hasegawa496/repo-ops` 側で一元管理する（`scripts/setup-project-token-secrets.sh` を参照）
+  - 未設定のまま workflow を導入すると、Issue作成/編集時のトリアージ実行が失敗する
 
 ## 運用ルール（配置・命名）
 
