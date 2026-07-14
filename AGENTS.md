@@ -12,6 +12,7 @@
 - `workflow-templates/*.yml`（配布テンプレ）
 - `scripts/`（導入/同期補助）
 - `docs/github-workflow-operations.md`
+- `docs/issue-triage-specification.md`
 
 ## 作業ルール
 

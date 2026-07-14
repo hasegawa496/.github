@@ -20,6 +20,7 @@
   - `scripts/`
 - 運用ドキュメント
   - `docs/github-workflow-operations.md`
+  - `docs/issue-triage-specification.md`
 
 ## 参照先
 
