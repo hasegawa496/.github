@@ -4,7 +4,7 @@
 
 ## 一覧
 
-- `setup.sh`: 標準構成のまとめ実行（設定 → Dependabot → ラベル同期、引数なし）
+- `setup.sh`: 標準構成のまとめ実行（設定 → Dependabot → ラベル同期 → Dependabot自動マージ、引数なし。`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）
 - `setup-repo-settings.sh`: リポジトリ設定の初期化（ブランチ自動削除など、引数なし）
 - `setup-dependabot.sh`: Dependabot 設定を導入/更新し、PR を自動マージ（引数なし）
 - `setup-label-sync.sh`: ラベル同期 workflow を導入/更新し、起動（引数なし）
