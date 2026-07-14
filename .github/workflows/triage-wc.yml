@@ -96,12 +96,13 @@ jobs:
             exit 0
           fi
 
-          # 簡易正規化（P0 のような短縮表記を許容）
+          # 簡易正規化（Issue Form のフル表記「P1: 高」等も短縮表記も、
+          # Project の選択肢名である P0〜P3 に正規化する）
           case "$priority_opt" in
-            P0) priority_opt="P0: 緊急" ;;
-            P1) priority_opt="P1: 高" ;;
-            P2) priority_opt="P2: 中" ;;
-            P3) priority_opt="P3: 低" ;;
+            P0*) priority_opt="P0" ;;
+            P1*) priority_opt="P1" ;;
+            P2*) priority_opt="P2" ;;
+            P3*) priority_opt="P3" ;;
           esac
 
           # 簡易正規化（小文字入力を許容）
