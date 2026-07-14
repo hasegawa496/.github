@@ -67,6 +67,7 @@ jobs:
 
           comment() {
             local body="$1"
+            body="${body//\\n/$'\n'}"
             GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/comments" -f body="$body" >/dev/null || true
           }
 
