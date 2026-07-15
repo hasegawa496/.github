@@ -169,3 +169,101 @@ merge_pr_or_fail() {
   show_remote_branch_cleanup_hint "$branch"
   return 1
 }
+
+# 配布用 caller workflow（label-sync.yml など）の導入をまとめて行う共通処理。
+# 導入要否の判定（自己管理repo/既に同一内容）から、ブランチ作成・PR作成・自動マージまでを担う。
+# 戻り値 0 は「呼び出し元は後続処理（workflow起動など）を続けてよい」ことを意味し、
+# 自己管理repoでのスキップ・既に同一内容でのスキップ・導入成功のいずれでも 0 を返す。
+# 1 は導入自体に失敗しており、後続処理を続けるべきではないことを意味する。
+# 個々の setup-*.sh がここで is_self_managed_caller_repo の分岐を持たないようにすることで、
+# 「自己管理repoでも本来必要な後続処理まで一緒にスキップしてしまう」抜け漏れを構造的に防ぐ。
+install_or_skip_caller_workflow() {
+  local repo_full="$1"
+  local expected_content_path="$2"
+  local workflow_path="$3"
+  local default_branch="$4"
+  local branch_prefix="$5"
+  local commit_message="$6"
+  local pr_title="$7"
+  local pr_body="$8"
+
+  if is_self_managed_caller_repo "$repo_full"; then
+    echo "${repo_full} は呼び出し側 workflow を scripts/sync-workflow-callers.sh で自己管理するため、テンプレート導入はスキップします。" >&2
+    return 0
+  fi
+
+  ensure_actions_enabled "$repo_full"
+
+  local needs_apply_template="true"
+  if [[ -f "$workflow_path" ]]; then
+    if ! command -v cmp >/dev/null 2>&1; then
+      echo "既に存在します: $workflow_path（cmp が無いため、テンプレートで更新して導入を続行します）。" >&2
+    elif cmp -s "$workflow_path" "$expected_content_path"; then
+      echo "既に存在します: $workflow_path（同一内容のため、更新不要です）" >&2
+      needs_apply_template="false"
+    fi
+  fi
+
+  if [[ "$needs_apply_template" == "false" ]]; then
+    return 0
+  fi
+
+  ensure_clean_worktree
+  ensure_origin_exists
+
+  local base_ref
+  base_ref="$(ensure_remote_base_ref "$default_branch")"
+
+  local ts branch err
+  ts="$(date -u +%Y%m%d-%H%M%S)"
+  branch="${branch_prefix}-${ts}"
+
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    die "ローカルに同名ブランチが存在します: $branch（時間をおいて再実行してください）"
+  fi
+
+  if ! err="$(git checkout -q -b "$branch" "$base_ref" 2>&1)"; then
+    echo "$err" >&2
+    die "ブランチの作成に失敗しました。"
+  fi
+
+  mkdir -p "$(dirname "$workflow_path")"
+  cp "$expected_content_path" "$workflow_path"
+
+  git add "$workflow_path"
+  if ! err="$(git commit -q -m "$commit_message" 2>&1)"; then
+    echo "$err" >&2
+    die "コミットに失敗しました。"
+  fi
+
+  if ! err="$(git push --quiet -u origin "$branch" 2>&1)"; then
+    echo "$err" >&2
+    die "push に失敗しました。リモート/権限/ブランチ保護などを確認してください。"
+  fi
+
+  local pr_number
+  if ! pr_number="$(create_or_get_pr "$default_branch" "$branch" "$pr_title" "$pr_body")"; then
+    return 1
+  fi
+
+  echo "PR をマージします..." >&2
+  if ! merge_pr_or_fail "$pr_number" "$branch" "PR を自動でマージできませんでした。PR を手動でマージしてください。"; then
+    return 1
+  fi
+
+  echo "導入完了: $workflow_path" >&2
+
+  if ! git show-ref --verify --quiet "refs/heads/$default_branch"; then
+    git fetch --quiet origin "$default_branch" >/dev/null 2>&1 || true
+    git checkout -q -B "$default_branch" "origin/$default_branch"
+  else
+    git checkout -q "$default_branch"
+    git pull --ff-only --quiet origin "$default_branch" >/dev/null 2>&1 || true
+  fi
+
+  if git show-ref --verify --quiet "refs/heads/$branch"; then
+    git branch -D "$branch" >/dev/null 2>&1 || true
+  fi
+
+  git push --quiet origin --delete "$branch" >/dev/null 2>&1 || true
+}
