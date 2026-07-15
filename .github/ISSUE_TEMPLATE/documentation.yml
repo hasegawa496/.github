@@ -20,7 +20,7 @@ body:
         - "P1: 高"
         - "P2: 中"
         - "P3: 低"
-      default: 0
+      default: 3
     validations:
       required: true
 
