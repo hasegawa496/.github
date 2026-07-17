@@ -1,71 +1,25 @@
-# GitHub運用手順（ワークフロー）
+# GitHub Actions 運用
 
-この文書は、`hasegawa496/.github` における GitHub Actions 運用の手順書です。  
-**手順の正本（SSOT）** として扱います。
+## 配布
 
-対象一覧（どの workflow/tool を提供しているか）は README を参照してください。
+`templates/.github/` が、配布先リポジトリの `.github/` に対応する正本です。`hasegawa496/repo-ops` の `repos apply`、`repos init`、`repos create` が同じ経路で配布します。差分がある場合は対象リポジトリに PR を作成してマージし、その後 Label Sync を実行します。
 
-## 導入手順（配布先リポジトリ）
+`.github` 自身には同じテンプレートを配布するが、Reusable Workflow の参照だけをローカル参照へ変換します。`scripts/sync-workflow-callers.sh --write` はその生成結果を更新します。
 
-### 1) ラベル同期
+## CI と Dependabot Auto-merge
 
-- `workflow-templates/label-sync.yml` を配布先の `.github/workflows/label-sync.yml` として配置
-- Actions から `Label Sync` を実行
+- Auto-merge の待機対象は常に workflow 名 `CI` とする。
+- `CI` がないリポジトリには、成功だけを返すダミー `CI` を配置する。
+- 既に `name: CI` があるリポジトリではダミーを配置せず、既存の実 CI を保持する。
+- `ShellCheck`、`Rust CI`、`Test` など既存検証を `CI` に統合する作業は、対象リポジトリごとの変更として進める。
 
-自動導入する場合:
+## PROJECT_TOKEN
 
-- `scripts/setup-label-sync.sh` を配布先リポジトリのルートで実行
-- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済み
+Triage は Projects v2 を更新するため `PROJECT_TOKEN` を使う。secret の一括設定はプロジェクト運用ルートの `scripts/setup-project-token-secrets.sh` が担当し、`repos.json` の有効な全リポジトリを対象とする。`.github` も Triage を配布するため、除外は残さない。
 
-### 2) Dependabot
-
-- `.github/dependabot.yml` を配布先の `.github/dependabot.yml` として配置
-- 自動導入する場合は `scripts/setup-dependabot.sh` を配布先リポジトリのルートで実行
-- 導入 PR はスクリプトが作成後に自動マージする
-
-### 3) シェルスクリプト静的解析（ShellCheck）
-
-- `workflow-templates/shellcheck.yml` を配布先の `.github/workflows/shellcheck.yml` として配置
-- PR / push で自動実行
-
-### 4) Issueトリアージ（Projectフィールド自動設定）
-
-- `workflow-templates/triage.yml` を配布先の `.github/workflows/triage.yml` として配置
-- スクリプト導入する場合は `scripts/setup-triage-project-fields.sh` を配布先ルートで実行
-- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済み
-- 前提として、配布先repoに Projects v2 書き込み権限を持つ `PROJECT_TOKEN` secret が設定済みであること
-  - `PROJECT_TOKEN` の発行・全repoへの一括配布は `hasegawa496/repo-ops` 側で一元管理する（`scripts/setup-project-token-secrets.sh` を参照）
-  - 未設定のまま workflow を導入しても導入自体は失敗しない。Issue作成/編集時のトリアージ実行時にフォールバックコメントが付くだけで、`PROJECT_TOKEN` を後から設定すれば動くようになる
-
-### 5) Dependabot 自動マージ
-
-- `workflow-templates/dependabot-automerge.yml` を配布先の `.github/workflows/dependabot-automerge.yml` として配置し、`on.workflow_run.workflows` に配布先の CI workflow 名を指定する
-- `scripts/setup.sh`（`hasegawa496/repo-ops` の `scripts/repos apply`/`init`/`create` から呼ばれる）に組み込み済みで、既定値 `CI` で導入される
-- CI workflow 名が `CI` と異なる配布先は、`CI_WORKFLOW_NAME=<CI workflow の name>` を指定して `scripts/setup-dependabot-automerge.sh` を配布先ルートで個別実行する
-- CI workflow を持たない配布先には導入しても発火しない（安全側の挙動）。配布先ごとの導入要否・CI workflow 名の棚卸しは `hasegawa496/repo-ops` の `docs/dependabot-operations.md` 側で管理する
-- 導入 PR はスクリプトが作成後に自動マージする
-
-## 運用ルール（配置・命名）
-
-- `.github/workflows/*.yml`
-  - Reusable Workflow（`on: workflow_call`）と、このリポジトリ自身の CI を配置
-  - 他リポジトリからは `uses: hasegawa496/.github/.github/workflows/<file>.yml@v1` で参照
-- `workflow-templates/*.yml`
-  - 配布先へコピーして使う workflow を配置
-  - `uses:` で Reusable Workflow を呼び出す
-
-### シンボリックリンクは使わない
-
-`workflow-templates/` と `.github/workflows/` の共通化に symlink は使わず、スクリプトで同期/検証します。
-
-### テンプレ同期
+## 変更時の確認
 
 ```bash
 scripts/sync-workflow-callers.sh --write
 scripts/check-workflow-templates.sh
 ```
-
-### 変更の目安
-
-- ラベルを追加/変更: `.github/labels.yml` を更新し、対象リポジトリでラベル同期を実行
-- Issue/PR テンプレ本文: `.github/ISSUE_TEMPLATE` / `.github/PULL_REQUEST_TEMPLATE.md` を更新

@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   triage:
-    uses: ./.github/workflows/triage-wc.yml
+    uses: ./.github/workflows/triage-reusable.yml
     with:
       project_number: 12
       # project_owner: hasegawa496

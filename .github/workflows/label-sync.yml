@@ -6,7 +6,7 @@
 #   2. Actions > Label Sync > Run workflow で手動実行
 #
 # 呼び出し先:
-#   - hasegawa496/.github/.github/workflows/label-sync-wc.yml（Reusable Workflow）
+#   - hasegawa496/.github/.github/workflows/label-sync-reusable.yml（Reusable Workflow）
 #   - hasegawa496/.github/.github/labels.yml（ラベル定義）
 
 name: Label Sync
@@ -20,5 +20,5 @@ permissions:
 
 jobs:
   sync:
-    uses: ./.github/workflows/label-sync-wc.yml
+    uses: ./.github/workflows/label-sync-reusable.yml
     secrets: inherit

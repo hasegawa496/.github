@@ -1,7 +1,7 @@
 # ラベル定義（個人開発向けシンプル構成）
 #
 # 参照元:
-#   - hasegawa496/.github/.github/workflows/label-sync-wc.yml（ラベル同期ワークフロー）
+#   - hasegawa496/.github/.github/workflows/label-sync-reusable.yml（ラベル同期ワークフロー）
 #
 # type ラベルの管理対象は .github/type-labels.txt で定義します。
 # status ラベルは固定運用（Issue テンプレートとは無関係）です。
