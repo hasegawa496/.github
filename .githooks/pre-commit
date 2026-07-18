@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# pre-commit: ステージング済みの .sh ファイルに shellcheck を実行する
+# pre-commit: ステージング済みのシェルと Workflow 関連ファイルを検証する
 set -euo pipefail
-
-if ! command -v shellcheck >/dev/null 2>&1; then
-  echo "[pre-commit] shellcheck が見つかりません。スキップします。（brew/apt install shellcheck）"
-  exit 0
-fi
 
 mapfile -t staged_sh < <(git diff --cached --name-only --diff-filter=ACM | grep '\.sh$' || true)
 
-if [[ ${#staged_sh[@]} -eq 0 ]]; then
-  exit 0
+if [[ ${#staged_sh[@]} -gt 0 ]]; then
+  if ! command -v shellcheck >/dev/null 2>&1; then
+    echo "[pre-commit] shellcheck が見つかりません。スキップします。（brew/apt install shellcheck）"
+  else
+    echo "[pre-commit] shellcheck: ${staged_sh[*]}"
+    shellcheck -x "${staged_sh[@]}"
+  fi
 fi
 
-echo "[pre-commit] shellcheck: ${staged_sh[*]}"
-shellcheck -x "${staged_sh[@]}"
+mapfile -t staged_workflow_assets < <(
+  git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '^(\.github/workflows/|templates/|scripts/(sync-workflow-callers|check-workflow-templates)\.sh$)' \
+    || true
+)
+
+if [[ ${#staged_workflow_assets[@]} -gt 0 ]]; then
+  echo "[pre-commit] workflow template check: ${staged_workflow_assets[*]}"
+  scripts/check-workflow-templates.sh
+fi

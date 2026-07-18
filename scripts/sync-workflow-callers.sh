@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# templates/ を正本として、このリポジトリ自身で使うローカル参照版を生成する。
 set -euo pipefail
 
 usage() {
@@ -8,9 +9,8 @@ usage() {
   scripts/sync-workflow-callers.sh --check
 
 目的:
-  workflow-templates/ を配布テンプレ（ソース）として、.github/workflows/ にある
-  「このリポジトリ自身の呼び出し側 workflow（CI/手動実行）」を同期します。
-
+  templates/ 配下の配布対象を、このリポジトリ自身向けに同期します。
+  Reusable Workflow の参照だけは外部参照ではなくローカル参照へ変換します。
 EOF
 }
 
@@ -34,42 +34,25 @@ trap 'rm -rf "$tmp_dir"' EXIT
 render() {
   local src="$1"
   local dst="$2"
-  local local_uses="$3"
-  local name_override="${4:-}"
-  local workflows_override="${5:-}"
+  local out="$tmp_dir/${dst//\//_}"
 
-  [[ -f "$src" ]] || die "見つかりません: $src"
-
-  local out
-  out="$tmp_dir/$(basename "$dst")"
   cp "$src" "$out"
-
-  # Reusable Workflow の参照をローカル参照に差し替える（配布先では使えないため）
-  # 例:
-  #   uses: hasegawa496/.github/.github/workflows/shellcheck-wc.yml@v1
-  #   uses: ./.github/workflows/shellcheck-wc.yml
   sed -i \
-    -e "s#uses:[[:space:]]*hasegawa496/\\.github/\\.github/workflows/[^[:space:]@]\\+\\.yml@[^[:space:]]\\+#uses: ${local_uses}#g" \
+    -e 's#uses:[[:space:]]*hasegawa496/\.github/\.github/workflows/\([^[:space:]@]\+\)@[^[:space:]]\+#uses: ./.github/workflows/\1#g' \
     "$out"
 
-  if [[ -n "${name_override:-}" ]]; then
-    sed -i -e "s#^name: .*#name: ${name_override}#g" "$out"
+  if [[ "$src" == "templates/.github/workflows/shellcheck.yml" ]]; then
+    sed -i -e 's/^name: ShellCheck$/name: CI/' "$out"
   fi
 
-  if [[ -n "${workflows_override:-}" ]]; then
-    sed -i -e "s#workflows: \\[\"CI\"\\]#workflows: [\"${workflows_override}\"]#" "$out"
-  fi
-
-  # 生成物であることを明示（先頭に短い注記を挿入）
-  # 既にコメントがある場合でも、先頭に1行だけ追加する。
-  if ! head -n 1 "$out" | rg -n "GENERATED" >/dev/null 2>&1; then
+  if [[ "$src" == "templates/.github/workflows/"* ]] && ! head -n 1 "$out" | rg -q 'GENERATED'; then
     { echo "# GENERATED: scripts/sync-workflow-callers.sh により生成"; cat "$out"; } >"$out.new"
     mv "$out.new" "$out"
   fi
 
   if [[ "$mode" == "--check" ]]; then
     if ! cmp -s "$out" "$dst"; then
-      echo "差分あり: $dst（テンプレと不一致）" >&2
+      echo "差分あり: $dst（templates/ と不一致）" >&2
       return 1
     fi
     return 0
@@ -79,11 +62,23 @@ render() {
   mv "$out" "$dst"
 }
 
-# workflow-templates を配布テンプレ（ソース）として扱う
-# - caller workflow を同名テンプレートから同期する
-render "workflow-templates/shellcheck.yml" ".github/workflows/shellcheck.yml" "./.github/workflows/shellcheck-wc.yml"
-render "workflow-templates/label-sync.yml" ".github/workflows/label-sync.yml" "./.github/workflows/label-sync-wc.yml"
-render "workflow-templates/triage.yml" ".github/workflows/triage.yml" "./.github/workflows/triage-wc.yml"
-render "workflow-templates/dependabot-automerge.yml" ".github/workflows/dependabot-automerge.yml" "./.github/workflows/dependabot-automerge-wc.yml" "" "ShellCheck"
+has_ci_workflow() {
+  local workflow
+  shopt -s nullglob
+  for workflow in .github/workflows/*.yml .github/workflows/*.yaml; do
+    if rg -q '^name:[[:space:]]*CI[[:space:]]*$' "$workflow"; then
+      return 0
+    fi
+  done
+  return 1
+}
 
-echo "OK: 呼び出し側 workflow を同期しました（$mode）"
+while IFS= read -r -d '' src; do
+  dst="${src#templates/}"
+  if [[ "$src" == "templates/.github/workflows/ci.yml" ]] && has_ci_workflow; then
+    continue
+  fi
+  render "$src" "$dst"
+done < <(find templates -type f -print0 | sort -z)
+
+echo "OK: templates/ から自己利用設定を同期しました（$mode）"

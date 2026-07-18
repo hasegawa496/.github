@@ -1,0 +1,29 @@
+name: Repository Configuration Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'templates/**'
+      - 'scripts/check-workflow-templates.sh'
+      - 'scripts/sync-workflow-callers.sh'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - 'templates/**'
+      - 'scripts/check-workflow-templates.sh'
+      - 'scripts/sync-workflow-callers.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - run: scripts/check-workflow-templates.sh

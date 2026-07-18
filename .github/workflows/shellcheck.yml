@@ -4,7 +4,7 @@
 # 推奨:
 #   - このファイルを対象リポジトリの `.github/workflows/shellcheck.yml` としてコピーしてください。
 
-name: ShellCheck
+name: CI
 
 on:
   pull_request:
@@ -17,4 +17,4 @@ permissions:
 
 jobs:
   shellcheck:
-    uses: ./.github/workflows/shellcheck-wc.yml
+    uses: ./.github/workflows/shellcheck-reusable.yml

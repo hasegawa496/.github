@@ -1,4 +1,3 @@
-# GENERATED: scripts/sync-workflow-callers.sh により生成
 # Dependabot 自動マージ（配布先へコピーして使う workflow）
 #
 # 使い方:
@@ -23,5 +22,5 @@ permissions:
 
 jobs:
   automerge:
-    uses: ./.github/workflows/dependabot-automerge-reusable.yml
+    uses: hasegawa496/.github/.github/workflows/dependabot-automerge-reusable.yml@main
     secrets: inherit

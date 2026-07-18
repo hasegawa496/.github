@@ -1,0 +1,14 @@
+# CI が未整備のリポジトリ用の最小 workflow。
+# 既に name: CI を持つ workflow がある場合は配布しない。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  success:
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
