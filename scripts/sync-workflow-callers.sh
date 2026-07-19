@@ -75,10 +75,15 @@ has_ci_workflow() {
 
 while IFS= read -r -d '' src; do
   dst="${src#templates/}"
-  if [[ "$src" == "templates/.github/workflows/ci.yml" ]] && has_ci_workflow; then
+  if [[ "$src" == "templates/.github/workflows/ci.yml" ]]; then
     continue
   fi
   render "$src" "$dst"
 done < <(find templates -type f -print0 | sort -z)
+
+# 自己利用する検証 workflow は name: CI に変換されるため、先に同期してから判定する。
+if ! has_ci_workflow; then
+  render "templates/.github/workflows/ci.yml" ".github/workflows/ci.yml"
+fi
 
 echo "OK: templates/ から自己利用設定を同期しました（$mode）"
