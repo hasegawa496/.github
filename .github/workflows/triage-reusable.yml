@@ -144,8 +144,11 @@ jobs:
               }
             }'
 
-          project_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$project_query" -F owner="${PROJECT_OWNER}" -F number="${PROJECT_NUMBER}")"
-          project_obj="$(jq -c '.data.organization.projectV2 // .data.user.projectV2 // empty' <<<"$project_json")"
+          # owner が個人アカウントの場合、organization フィールドの解決失敗により
+          # graphql の errors が返り gh api graphql が非ゼロ終了するが、
+          # data 自体は取得できているため、exit code ではなく取得データの有無で成否判定する。
+          project_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$project_query" -F owner="${PROJECT_OWNER}" -F number="${PROJECT_NUMBER}" 2>/dev/null || true)"
+          project_obj="$(jq -c '.data.organization.projectV2 // .data.user.projectV2 // empty' <<<"${project_json:-{}}" 2>/dev/null || true)"
           if [[ -z "$project_obj" ]]; then
             comment "Project（${PROJECT_OWNER}/${PROJECT_NUMBER}）の取得に失敗しました。owner/番号が正しいか確認してください。"
             exit 0
