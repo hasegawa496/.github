@@ -51,6 +51,18 @@ jobs:
             exit 0
           fi
 
+          # このワークフローの呼び出し元テンプレートが actions/checks/statuses の
+          # read 権限をまだ配布されていない場合、GITHUB_TOKEN に権限がなく後続の
+          # gh api が 403 になる。原因不明のまま落ちないよう、先に権限を確認する。
+          if ! gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=1" >/dev/null 2>/tmp/permission-check.err; then
+            echo "エラー: チェック状況の取得に失敗しました（権限不足の可能性）。" >&2
+            cat /tmp/permission-check.err >&2
+            echo "呼び出し元テンプレート .github/workflows/dependabot-automerge.yml に" >&2
+            echo "actions: read / checks: read / statuses: read 権限が配布されているか確認し、" >&2
+            echo "未配布であれば repos apply で再配布してください。" >&2
+            exit 1
+          fi
+
           # head SHA 上の全チェックが完結し、すべて成功の場合だけマージする。
           # 未完了のチェックが残る間はポーリングで完結を待つ（間隔30秒、上限30分）。
           interval=30
