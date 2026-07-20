@@ -42,5 +42,6 @@
 - [ShellCheck](reusable-workflows/shellcheck.md)
 - [Triage](reusable-workflows/triage.md)
 - [Dependabot Auto-merge](reusable-workflows/dependabot-automerge.md)
+- [CI（ダミー）](reusable-workflows/ci.md)（Reusable Workflow ではなく配布テンプレートのみの例外）
 
 設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md) と [ADR 0002](adr/0002-template-distribution-and-ci-name.md) を参照します。
