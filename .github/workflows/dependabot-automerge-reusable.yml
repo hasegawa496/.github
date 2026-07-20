@@ -1,9 +1,10 @@
 # Dependabot 自動マージ Reusable Workflow
 #
 # 対象:
-#   - dependabot が作成した PR に紐づく CI ワークフローが成功した場合、
-#     patch / minor / major の区別なく無条件でマージする
-#   - 呼び出し元 repo は on.workflow_run.workflows に監視対象の CI workflow 名を指定する
+#   - dependabot が作成した PR について、head SHA 上のすべてのチェック
+#     （Actions の workflow run、外部 CI の check run、commit status）が
+#     完結し、すべて成功の場合だけ、patch / minor / major の区別なくマージする
+#   - 呼び出し元 repo は on.workflow_run.workflows に発火用の CI workflow 名を指定する
 #
 # 使用方法:
 #   各リポジトリの .github/workflows/dependabot-automerge.yml から呼び出す
@@ -12,7 +13,9 @@
 # 注意:
 #   required_status_checks（branch protection）は private repo で有料プラン必須のため
 #   未導入（ADR-001）。そのため GitHub 標準の auto-merge には頼らず、CI 完了
-#   （workflow_run）を明示的にトリガーとして拾い、conclusion を確認してから即時マージする。
+#   （workflow_run）をトリガーとして拾い、head SHA 上の全チェックの完結と成功を
+#   確認してからマージする。workflow_run はトリガーに過ぎず、マージ可否の gate は
+#   この全チェック確認が担う。
 
 name: Dependabot Auto-merge (Reusable)
 
@@ -22,6 +25,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: read
+  checks: read
+  statuses: read
 
 jobs:
   automerge:
@@ -30,18 +36,75 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.actor.login == 'dependabot[bot]'
     steps:
-      - name: dependabot PR をマージする
+      - name: 全チェックの成功を確認して dependabot PR をマージする
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          SELF_RUN_ID: ${{ github.run_id }}
+          SELF_WORKFLOW: ${{ github.workflow }}
         run: |
           pr_number=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --json number --jq '.[0].number')
           if [ -z "$pr_number" ]; then
             echo "対象PRが見つかりませんでした: $HEAD_BRANCH"
             exit 0
           fi
-          # CIが成功した head_sha と現在のPR headが一致する場合のみマージする（
-          # dependabotがCI成功後にrebase/更新pushした場合の未検証コミット混入を防ぐ）
+
+          # このワークフローの呼び出し元テンプレートが actions/checks/statuses の
+          # read 権限をまだ配布されていない場合、GITHUB_TOKEN に権限がなく後続の
+          # gh api が 403 になる。原因不明のまま落ちないよう、先に権限を確認する。
+          if ! gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=1" >/dev/null 2>/tmp/permission-check.err; then
+            echo "エラー: チェック状況の取得に失敗しました（権限不足の可能性）。" >&2
+            cat /tmp/permission-check.err >&2
+            echo "呼び出し元テンプレート .github/workflows/dependabot-automerge.yml に" >&2
+            echo "actions: read / checks: read / statuses: read 権限が配布されているか確認し、" >&2
+            echo "未配布であれば repos apply で再配布してください。" >&2
+            exit 1
+          fi
+
+          # head SHA 上の全チェックが完結し、すべて成功の場合だけマージする。
+          # 未完了のチェックが残る間はポーリングで完結を待つ（間隔30秒、上限30分）。
+          interval=30
+          deadline=$(( $(date +%s) + 30 * 60 ))
+          while :; do
+            # Actions の workflow run。自分自身と同名 workflow（並行する automerge）は
+            # 完結判定から除外する（相互待ちによるデッドロックを防ぐ）
+            actions_runs=$(gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
+              | jq --arg self_id "$SELF_RUN_ID" --arg self_wf "$SELF_WORKFLOW" \
+                '[.workflow_runs[] | select(.id != ($self_id | tonumber) and .name != $self_wf)
+                  | {name, status, conclusion}]')
+            # 外部 CI（GitHub App）が作成した check run。Actions 由来は上で判定済みのため除外する
+            external_runs=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" \
+              | jq '[.check_runs[] | select(.app.slug != "github-actions")
+                  | {name, status, conclusion}]')
+            # commit status（外部 CI の status API）。status が1件もなければ成功扱いにする
+            # （combined status は0件でも state=pending を返すため）
+            status_state=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+              | jq -r 'if .total_count == 0 then "success" else .state end')
+
+            failed=$(jq -n --argjson a "$actions_runs" --argjson e "$external_runs" \
+              '[($a[] | select(.status == "completed" and (.conclusion | IN("success", "skipped") | not))),
+                ($e[] | select(.status == "completed" and (.conclusion | IN("success", "neutral", "skipped") | not)))]')
+            if [ "$(jq 'length' <<<"$failed")" -gt 0 ] || [ "$status_state" = "failure" ]; then
+              echo "失敗したチェックがあるためマージしません（status_state=$status_state）"
+              jq -r '.[] | "  失敗: \(.name) (\(.conclusion))"' <<<"$failed"
+              exit 0
+            fi
+
+            pending=$(jq -n --argjson a "$actions_runs" --argjson e "$external_runs" \
+              '[($a[] | select(.status != "completed")), ($e[] | select(.status != "completed"))] | length')
+            if [ "$pending" -eq 0 ] && [ "$status_state" = "success" ]; then
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "エラー: チェックの完結待ちがタイムアウトしました（pending=$pending status_state=$status_state）" >&2
+              exit 1
+            fi
+            echo "未完了のチェックを待機中: pending=$pending status_state=$status_state"
+            sleep "$interval"
+          done
+
+          # 全チェックが成功した head_sha と現在のPR headが一致する場合のみマージする（
+          # dependabotが確認後にrebase/更新pushした場合の未検証コミット混入を防ぐ）
           gh pr merge "$pr_number" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA"

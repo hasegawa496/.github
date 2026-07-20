@@ -1,11 +1,16 @@
 # CI が未整備のリポジトリ用の最小 workflow。
 # 既に name: CI を持つ workflow がある場合は配布しない。
+# マージ可否の gate ではなく、Dependabot Auto-merge の workflow_run を
+# 必ず発火させるトリガー保証である（docs/reusable-workflows/ci.md）。
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   success:

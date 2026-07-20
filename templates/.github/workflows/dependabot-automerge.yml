@@ -3,11 +3,12 @@
 # 使い方:
 #   1) `templates/` の配布処理で各リポジトリの
 #      `.github/workflows/dependabot-automerge.yml` として配置する
-#   2) 待機対象は全リポジトリで `CI` に固定する
+#   2) 発火用の監視対象は全リポジトリで `CI` に固定する
 #
 # 対象:
-#   - dependabot が作成した PR に紐づく CI workflow が成功した場合、
-#     patch / minor / major の区別なく無条件でマージする
+#   - dependabot が作成した PR について、head SHA 上のすべてのチェックが
+#     完結し、すべて成功の場合だけ、patch / minor / major の区別なくマージする
+#   - マージ可否の判定は Reusable Workflow 側の全チェック確認が担う
 
 name: Dependabot Auto-merge
 
@@ -19,6 +20,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: read
+  checks: read
+  statuses: read
 
 jobs:
   automerge:
