@@ -227,12 +227,12 @@ jobs:
           fi
 
           update_mutation='
-            mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $value:ProjectV2FieldValue!){
+            mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!){
               updateProjectV2ItemFieldValue(input:{
                 projectId:$projectId,
                 itemId:$itemId,
                 fieldId:$fieldId,
-                value:$value
+                value:{ singleSelectOptionId:$optionId }
               }){
                 projectV2Item { id }
               }
@@ -242,7 +242,7 @@ jobs:
               -F projectId="${project_id}" \
               -F itemId="${item_id}" \
               -F fieldId="${priority_field_id}" \
-              -f value="$(jq -nc --arg id "${priority_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
+              -F optionId="${priority_option_id}" >/dev/null; then
             comment "Project の優先度フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 優先度=${priority_opt}\n\nIssue: ${issue_url}"
             exit 0
           fi
@@ -251,7 +251,7 @@ jobs:
               -F projectId="${project_id}" \
               -F itemId="${item_id}" \
               -F fieldId="${size_field_id}" \
-              -f value="$(jq -nc --arg id "${size_option_id}" '{singleSelectOptionId:$id}')" >/dev/null; then
+              -F optionId="${size_option_id}" >/dev/null; then
             comment "Project の Size フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: Size=${size_opt}\n\nIssue: ${issue_url}"
             exit 0
           fi
