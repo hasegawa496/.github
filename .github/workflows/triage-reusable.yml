@@ -6,7 +6,7 @@
 #
 # 前提:
 #   - Projects v2 に以下のフィールドが存在すること
-#       - 優先度（Single select）
+#       - Priority（Single select）
 #       - Size（Single select: XS/S/M/L/XL）
 #   - Project 更新には `project` 権限を持つトークン（PAT など）が必要になる場合があります
 #
@@ -31,7 +31,7 @@ on:
         description: 優先度フィールド名（Single select）
         required: false
         type: string
-        default: 優先度
+        default: Priority
       size_field_name:
         description: Size フィールド名（Single select）
         required: false
