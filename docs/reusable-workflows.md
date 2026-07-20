@@ -34,7 +34,7 @@
 2. Reusable Workflow と配布テンプレートを変更する。
 3. `scripts/sync-workflow-callers.sh --write` でこのリポジトリ用の呼び出し側を同期する。
 4. `scripts/check-workflow-templates.sh` と対象 Workflow に対応する検証を実行する。
-5. `repo-ops` の `apply` で配布する。既存の `CI` は保持し、存在しない場合だけダミー `CI` を配置する。
+5. `repo-ops` の `apply` で配布する。既存の `CI` は保持し、存在しない場合は既存検証の有無にかかわらず発火専用のダミー `CI` を配置する。
 
 ## 提供する Workflow
 

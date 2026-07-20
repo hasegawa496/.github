@@ -16,4 +16,4 @@ CI が未整備のリポジトリでも、Dependabot Auto-merge の `workflow_ru
 ## 位置づけ
 
 - Reusable Workflow ではなく、配布テンプレート `templates/.github/workflows/ci.yml` のみを持つ命名規約の例外である（経緯は [ADR 0002](../adr/0002-template-distribution-and-ci-name.md)）。
-- `repo-ops` の `apply` は、`name: CI` を持つ workflow が存在しないリポジトリだけに配布する。既存の `CI` はダミーで上書きしない。
+- `repo-ops` の `apply` は、`name: CI` を持つ workflow が存在しないリポジトリに配布する。`ShellCheck` や `Test` など既存の検証 workflow は名前を変えずに保持する。既存の `CI` はダミーで上書きしない。
