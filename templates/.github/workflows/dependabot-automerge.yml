@@ -27,4 +27,3 @@ permissions:
 jobs:
   automerge:
     uses: hasegawa496/.github/.github/workflows/dependabot-automerge-reusable.yml@main
-    secrets: inherit
