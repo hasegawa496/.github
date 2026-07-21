@@ -196,7 +196,7 @@ jobs:
               }
             }'
           if ! existing_items_json="$(GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$existing_item_query" -F contentId="${ISSUE_NODE_ID}" 2>/dev/null)"; then
-            comment "Issue の既存 Project アイテム確認に失敗しました（PROJECT_TOKEN に repo スコープ、またはこのリポジトリへの Issue 読み取り権限が不足している可能性があります）。\n\nIssue: ${issue_url}"
+            comment "Issue の既存 Project アイテム確認に失敗しました（PROJECT_TOKEN の Project アクセス権限が不足している可能性があります）。\n\nIssue: ${issue_url}"
             exit 0
           fi
           item_id="$(jq -r --arg pid "$project_id" '.data.node.projectItems.nodes[]? | select(.project.id==$pid) | .id' <<<"$existing_items_json" | head -n1)"
