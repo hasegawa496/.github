@@ -28,4 +28,3 @@ permissions:
 jobs:
   automerge:
     uses: ./.github/workflows/dependabot-automerge-reusable.yml
-    secrets: inherit

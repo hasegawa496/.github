@@ -21,4 +21,3 @@ permissions:
 jobs:
   sync:
     uses: ./.github/workflows/label-sync-reusable.yml
-    secrets: inherit
