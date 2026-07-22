@@ -92,13 +92,6 @@ jobs:
           priority_opt="$(extract_first_line_under_heading "優先度")"
           size_opt="$(extract_first_line_under_heading "Size")"
 
-          # 優先度/Sizeが取得できない場合も、Projectへの追加自体は後段で行う。
-          # ここでは判定結果だけ控え、フィールド更新のみ後でスキップする。
-          form_fields_missing=0
-          if [[ -z "${priority_opt:-}" || -z "${size_opt:-}" ]]; then
-            form_fields_missing=1
-          fi
-
           # 簡易正規化（Issue Form のフル表記「P1: 高」等も短縮表記も、
           # Project の選択肢名である P0〜P3 に正規化する）
           case "$priority_opt" in
@@ -206,37 +199,10 @@ jobs:
             item_id="$(jq -r '.data.addProjectV2ItemById.item.id // empty' <<<"$add_json")"
           fi
 
-          # Projectへの追加はここまでで完了。優先度/Sizeが未取得なら、
-          # フィールド更新はできないためここで終了する。
-          if (( form_fields_missing )); then
-            comment "Issue フォームから「優先度/Size」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。Project「${project_title}」への追加は完了しています。\n\n- 取得値: 優先度=${priority_opt:-（空）}, Size=${size_opt:-（空）}\n\nIssue: ${issue_url}"
-            exit 0
-          fi
-
+          # Projectへの追加はここまでで完了。優先度/Sizeは互いに独立して扱い、
+          # 片方だけ取得できた場合もその1件だけを設定する。
           priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
           size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
-
-          missing=()
-          [[ -z "${priority_field_id:-}" ]] && missing+=("${PRIORITY_FIELD_NAME}")
-          [[ -z "${size_field_id:-}" ]] && missing+=("${SIZE_FIELD_NAME}")
-          if (( ${#missing[@]} > 0 )); then
-            comment "Project「${project_title}」に必要なフィールドが見つかりません: ${missing[*]}。フィールド名を合わせるか、workflow の inputs（*_field_name）を調整してください。"
-            exit 0
-          fi
-
-          # 選択肢IDを解決（無ければ提案コメント）
-          priority_option_id="$(option_id_by_name "${PRIORITY_FIELD_NAME}" "${priority_opt}")"
-
-          if [[ -z "${priority_option_id:-}" ]]; then
-            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 取得値: 優先度=${priority_opt}, Size=${size_opt}\n\nProject 側の選択肢名を合わせるか、Issue テンプレの選択肢名を調整してください。\n\nIssue: ${issue_url}"
-            exit 0
-          fi
-
-          size_option_id="$(option_id_by_name "${SIZE_FIELD_NAME}" "${size_opt}")"
-          if [[ -z "${size_option_id:-}" ]]; then
-            comment "Project の選択肢に一致しないため、自動設定できませんでした。\n\n- 取得値: 優先度=${priority_opt}, Size=${size_opt}\n\nProject 側の選択肢名を合わせるか、Issue テンプレの選択肢名を調整してください。\n\nIssue: ${issue_url}"
-            exit 0
-          fi
 
           update_mutation='
             mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!){
@@ -250,20 +216,48 @@ jobs:
               }
             }'
 
-          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
+          update_field() {
+            local field_id="$1"
+            local option_id="$2"
+            GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
               -F projectId="${project_id}" \
               -F itemId="${item_id}" \
-              -F fieldId="${priority_field_id}" \
-              -F optionId="${priority_option_id}" >/dev/null; then
-            comment "Project の優先度フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: 優先度=${priority_opt}\n\nIssue: ${issue_url}"
-            exit 0
+              -F fieldId="${field_id}" \
+              -F optionId="${option_id}" >/dev/null
+          }
+
+          notes=()
+
+          if [[ -z "${priority_opt:-}" ]]; then
+            notes+=("優先度: Issue フォームから取得できませんでした")
+          elif [[ -z "${priority_field_id:-}" ]]; then
+            notes+=("優先度: Project「${project_title}」に${PRIORITY_FIELD_NAME}フィールドが見つかりません")
+          else
+            priority_option_id="$(option_id_by_name "${PRIORITY_FIELD_NAME}" "${priority_opt}")"
+            if [[ -z "${priority_option_id:-}" ]]; then
+              notes+=("優先度=${priority_opt}: Project 側に一致する選択肢がありません")
+            elif ! update_field "${priority_field_id}" "${priority_option_id}"; then
+              notes+=("優先度=${priority_opt}: フィールド更新に失敗しました（権限不足の可能性があります）")
+            fi
           fi
 
-          if ! GH_TOKEN="${PROJECT_TOKEN}" gh api graphql -f query="$update_mutation" \
-              -F projectId="${project_id}" \
-              -F itemId="${item_id}" \
-              -F fieldId="${size_field_id}" \
-              -F optionId="${size_option_id}" >/dev/null; then
-            comment "Project の Size フィールド更新に失敗しました（権限不足の可能性があります）。\n\n- 推定: Size=${size_opt}\n\nIssue: ${issue_url}"
-            exit 0
+          if [[ -z "${size_opt:-}" ]]; then
+            notes+=("Size: Issue フォームから取得できませんでした")
+          elif [[ -z "${size_field_id:-}" ]]; then
+            notes+=("Size: Project「${project_title}」に${SIZE_FIELD_NAME}フィールドが見つかりません")
+          else
+            size_option_id="$(option_id_by_name "${SIZE_FIELD_NAME}" "${size_opt}")"
+            if [[ -z "${size_option_id:-}" ]]; then
+              notes+=("Size=${size_opt}: Project 側に一致する選択肢がありません")
+            elif ! update_field "${size_field_id}" "${size_option_id}"; then
+              notes+=("Size=${size_opt}: フィールド更新に失敗しました（権限不足の可能性があります）")
+            fi
+          fi
+
+          if (( ${#notes[@]} > 0 )); then
+            note_lines=""
+            for note in "${notes[@]}"; do
+              note_lines+="- ${note}\n"
+            done
+            comment "Project「${project_title}」への追加は完了していますが、一部フィールドは自動設定できませんでした。\n\n${note_lines}\nIssue: ${issue_url}"
           fi
