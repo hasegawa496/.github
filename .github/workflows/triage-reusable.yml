@@ -92,9 +92,11 @@ jobs:
           priority_opt="$(extract_first_line_under_heading "優先度")"
           size_opt="$(extract_first_line_under_heading "Size")"
 
+          # 優先度/Sizeが取得できない場合も、Projectへの追加自体は後段で行う。
+          # ここでは判定結果だけ控え、フィールド更新のみ後でスキップする。
+          form_fields_missing=0
           if [[ -z "${priority_opt:-}" || -z "${size_opt:-}" ]]; then
-            comment "Issue フォームから「優先度/Size」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。\n\n- 取得値: 優先度=${priority_opt:-（空）}, Size=${size_opt:-（空）}\n\nIssue: ${issue_url}"
-            exit 0
+            form_fields_missing=1
           fi
 
           # 簡易正規化（Issue Form のフル表記「P1: 高」等も短縮表記も、
@@ -162,17 +164,6 @@ jobs:
             jq -r --arg name "$name" '.fields.nodes[] | select(.name==$name) | .id' <<<"$project_obj" | head -n1
           }
 
-          priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
-          size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
-
-          missing=()
-          [[ -z "${priority_field_id:-}" ]] && missing+=("${PRIORITY_FIELD_NAME}")
-          [[ -z "${size_field_id:-}" ]] && missing+=("${SIZE_FIELD_NAME}")
-          if (( ${#missing[@]} > 0 )); then
-            comment "Project「${project_title}」に必要なフィールドが見つかりません: ${missing[*]}。フィールド名を合わせるか、workflow の inputs（*_field_name）を調整してください。"
-            exit 0
-          fi
-
           option_id_by_name() {
             local field_name="$1"
             local option_name="$2"
@@ -213,6 +204,24 @@ jobs:
               exit 0
             fi
             item_id="$(jq -r '.data.addProjectV2ItemById.item.id // empty' <<<"$add_json")"
+          fi
+
+          # Projectへの追加はここまでで完了。優先度/Sizeが未取得なら、
+          # フィールド更新はできないためここで終了する。
+          if (( form_fields_missing )); then
+            comment "Issue フォームから「優先度/Size」を取得できませんでした。テンプレ（Issue Forms）の項目名が一致しているか確認してください。Project「${project_title}」への追加は完了しています。\n\n- 取得値: 優先度=${priority_opt:-（空）}, Size=${size_opt:-（空）}\n\nIssue: ${issue_url}"
+            exit 0
+          fi
+
+          priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
+          size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
+
+          missing=()
+          [[ -z "${priority_field_id:-}" ]] && missing+=("${PRIORITY_FIELD_NAME}")
+          [[ -z "${size_field_id:-}" ]] && missing+=("${SIZE_FIELD_NAME}")
+          if (( ${#missing[@]} > 0 )); then
+            comment "Project「${project_title}」に必要なフィールドが見つかりません: ${missing[*]}。フィールド名を合わせるか、workflow の inputs（*_field_name）を調整してください。"
+            exit 0
           fi
 
           # 選択肢IDを解決（無ければ提案コメント）
