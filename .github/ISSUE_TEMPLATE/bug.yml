@@ -15,12 +15,11 @@ body:
     attributes:
       label: 優先度
       options:
-        - 未定
         - "P0: 緊急"
         - "P1: 高"
         - "P2: 中"
         - "P3: 低"
-      default: 3
+      default: 2
     validations:
       required: true
 
