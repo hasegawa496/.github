@@ -1,6 +1,8 @@
-# Issue を Project に追加し、優先度/Size を自動設定する Reusable Workflow
+# Issue をアサインし Project に追加し、優先度/Size を自動設定する Reusable Workflow
 #
 # 目的:
+#   - Issue 作成時に repo owner を自動アサイン（Issue Form の assignees が効かない
+#     CLI 起票（gh issue create）を補完する。既にアサイン済みなら何もしない）
 #   - Issue 作成時に Project（Projects v2）へ自動追加
 #   - Issue フォームの入力内容から Project のフィールドを更新（優先度/Size）
 #
@@ -50,11 +52,13 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - name: Project へ追加しフィールドを更新
+      - name: アサインし Project へ追加しフィールドを更新
         env:
           REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
+          EVENT_ACTION: ${{ github.event.action }}
+          DEFAULT_ASSIGNEE: ${{ github.repository_owner }}
           PROJECT_OWNER: ${{ inputs.project_owner || github.repository_owner }}
           PROJECT_NUMBER: ${{ inputs.project_number }}
           PRIORITY_FIELD_NAME: ${{ inputs.priority_field_name }}
@@ -75,6 +79,21 @@ jobs:
           issue_title="$(jq -r '.title // ""' <<<"$issue_json")"
           issue_body="$(jq -r '.body // ""' <<<"$issue_json")"
           issue_url="$(jq -r '.html_url // ""' <<<"$issue_json")"
+          issue_assignees="$(jq -r '[.assignees[].login] | join(",")' <<<"$issue_json")"
+
+          # Issue Form の assignees は Web UI 起票時しか適用されず、CLI 起票（gh issue create）では
+          # 抜けるため、ここで補完する。既にアサイン済みなら触らない。opened 以外で動かさないのは、
+          # 意図的に外したアサインを本文編集（edited）で復活させないため。
+          # Project 更新と違い issues: write だけで足りるので、PROJECT_TOKEN の判定より前に行う。
+          if [[ "${EVENT_ACTION}" == "opened" && -z "$issue_assignees" ]]; then
+            GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/assignees" \
+              -f "assignees[]=${DEFAULT_ASSIGNEE}" >/dev/null 2>&1 || true
+            # アサイン API は権限の無いユーザーを指定しても成功扱いで無視するため、結果を確認する
+            assigned_now="$(GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}" --jq '[.assignees[].login] | join(",")' 2>/dev/null || true)"
+            if [[ -z "$assigned_now" ]]; then
+              comment "${DEFAULT_ASSIGNEE} をアサインできませんでした。リポジトリへの権限を確認してください。\n\nIssue: ${issue_url}"
+            fi
+          fi
 
           extract_first_line_under_heading() {
             local heading="$1"
