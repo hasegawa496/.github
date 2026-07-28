@@ -44,4 +44,6 @@
 - [Dependabot Auto-merge](reusable-workflows/dependabot-automerge.md)
 - [CI（ダミー）](reusable-workflows/ci.md)（Reusable Workflow ではなく配布テンプレートのみの例外）
 
-設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md) と [ADR 0002](adr/0002-template-distribution-and-ci-name.md) を参照します。
+設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md)、[ADR 0002](adr/0002-template-distribution-and-ci-name.md)、[ADR 0003](adr/0003-consolidate-verification-into-single-job.md) を参照します。
+
+ADR 0003 により、検証系は Reusable Workflow ではなく composite action で共通化し、各リポジトリの `name: CI` 単一ジョブへ統合する方針です。Reusable Workflow は `jobs.<job_id>.uses` で呼ぶため必ず独立したジョブになり、GitHub Actions の 1 分未満切り上げ課金がジョブごとに発生します。イベントが独立していてジョブを共有できないもの（Triage、Label Sync、Dependabot Auto-merge）は Reusable Workflow のまま維持します。
