@@ -13,7 +13,10 @@ name: Triage
 
 on:
   issues:
-    types: [opened, edited, reopened]
+    # reopened は含めない。本文が変わらないため、アサインは opened 限定で対象外、
+    # Project は既存 item を再利用、優先度/Size は同じ値の書き直しとなり、
+    # 何も変わらないまま1分課金されるだけである。
+    types: [opened, edited]
 
 permissions:
   contents: read
