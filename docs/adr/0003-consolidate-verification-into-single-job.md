@@ -71,7 +71,7 @@ Dependabot Auto-merge が `pull_request` ではなく `workflow_run` で CI の�
 
 ### 5. CI を `push: main` で発火させない
 
-CI は `pull_request` だけで発火させる。PR でグリーンだったコミットを squash merge した直後に同じ内容を再検証しており、private リポジトリでは branch protection を使わないため（[ADR-001](https://github.com/hasegawa496/repo-ops/blob/main/docs/decisions/adr-001-branch-protection-standardization.md)）、main の検証結果を gate にしている箇所は無い。将来的には、main への push を検知するプッシュフックで merge 後の main の検証を保証する。
+CI は `pull_request` だけで発火させる。PR でグリーンだったコミットを squash merge した直後に同じ内容を再検証しており、private リポジトリでは branch protection を使わないため（[ADR-001](https://github.com/hasegawa496/repo-ops/blob/main/docs/decisions/adr-001-branch-protection-standardization.md)）、main の検証結果を gate にしている箇所は無い。将来的には、プッシュフックで `main` への直接 push を禁止し、変更経路を PR に限定する。
 
 除外は release-please 系のワークフローとする。これらは main への push を起点に動くことが役割そのものである。
 
@@ -124,7 +124,7 @@ PR への push 1 回あたりのジョブ数が全リポジトリで 1 になる
 - **ジョブ単位の切り分けが落ちる。** ShellCheck の失敗とテストの失敗が同じジョブの中に並ぶ。ステップ名で判別する
 - **並列実行が無くなる。** 実処理が 2 分未満のため実害は小さいが、将来重い検証を足す場合は分割の是非を再検討する
 - **`ci.yml` の配布による追随が無くなる。** 既存リポジトリの統合状態は `repos check` と CI 統合 Skill で維持する
-- **main への merge 後に CI を再実行しなくなる。** merge 後の main の検証は、将来的に導入するプッシュフックで保証する
+- **main への merge 後に CI を再実行しなくなる。** 直接 push は、将来的に導入するプッシュフックで禁止する
 
 ## 非対象
 
@@ -139,7 +139,7 @@ PR への push 1 回あたりのジョブ数が全リポジトリで 1 になる
 4. CI 統合 Skill を `hasegawa496/dotclaude` に作成する
 5. 検査の違反を Issue として起票し、Skill で各リポジトリの CI を目標形へ修正する。`shellcheck.yml` の削除と `push: main` の除去も同じ修正に含める
 6. 全リポジトリの移行完了と参照が無いことを確認してから、`shellcheck-reusable.yml` と `templates/.github/workflows/shellcheck.yml` を削除する
-7. main への push 後の検証を保証するプッシュフックを導入する
+7. `main` への直接 push を禁止し、変更経路を PR に限定するプッシュフックを導入する
 
 最後の削除は ADR 0001 のタグ削除と同じ手順を踏む。移行途中は composite action と Reusable Workflow が併存するが、`shellcheck-reusable.yml` は変更せず残すため、未移行リポジトリの動作には影響しない。
 
