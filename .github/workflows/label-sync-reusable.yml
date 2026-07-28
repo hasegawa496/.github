@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    # checkout と JS action しか使わず数秒で終わるため、低コストな ubuntu-slim を使う
+    # （private repo での超過分の単価が $0.006/分 から $0.002/分 になる）
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout .github repository
         uses: actions/checkout@v7

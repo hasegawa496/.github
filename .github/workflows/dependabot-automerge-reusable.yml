@@ -31,7 +31,11 @@ permissions:
 
 jobs:
   automerge:
-    runs-on: ubuntu-latest
+    # gh と jq しか使わないため低コストな ubuntu-slim を使う
+    # （ubuntu-slim のジョブ実行上限は15分。下記の待機上限はそれを大きく下回る）
+    runs-on: ubuntu-slim
+    # 待機ループ自体が止まった場合の最終的な課金上限（通常は50秒前後で終わる）
+    timeout-minutes: 2
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.actor.login == 'dependabot[bot]'
@@ -45,6 +49,11 @@ jobs:
           SELF_RUN_ID: ${{ github.run_id }}
           SELF_WORKFLOW: ${{ github.workflow }}
         run: |
+          # 課金はジョブ全体の実時間を分に切り上げて行われる。待機ループだけを基準に
+          # すると、ここから待機開始までにかかった時間が上乗せされて1分を超えるため、
+          # ステップ先頭を起点にして打ち切り時刻を決める。
+          step_started=$(date +%s)
+
           pr_number=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --json number --jq '.[0].number')
           if [ -z "$pr_number" ]; then
             echo "対象PRが見つかりませんでした: $HEAD_BRANCH"
@@ -64,9 +73,20 @@ jobs:
           fi
 
           # head SHA 上の全チェックが完結し、すべて成功の場合だけマージする。
-          # 未完了のチェックが残る間はポーリングで完結を待つ（間隔30秒、上限30分）。
-          interval=30
-          deadline=$(( $(date +%s) + 30 * 60 ))
+          # 未完了のチェックが残る間はポーリングで完結を待つ。
+          #
+          # 待機中もランナーを保持して課金され、課金は1分未満を切り上げる。つまり
+          # ジョブ全体が60秒以内に収まる限り追加課金は発生せず、1秒でも超えると
+          # 2分になる。そこでステップ先頭から45秒で打ち切り、ランナー起動と最後の
+          # マージ処理を含めても1分の枠に収まるようにする。
+          #
+          # 2026-07 実測では、課金された25 runのうち24 runが40秒以内に完了しており、
+          # 60秒を超えたのは1 runだけだった。上限に達してもマージせず失敗するだけで、
+          # その場合は手動でマージすればよい。
+          #
+          # 打ち切りまでが短いぶん、間隔を詰めて判定回数を確保する。
+          interval=5
+          deadline=$(( step_started + 45 ))
           while :; do
             # Actions の workflow run。自分自身と同名 workflow（並行する automerge）は
             # 完結判定から除外する（相互待ちによるデッドロックを防ぐ）
