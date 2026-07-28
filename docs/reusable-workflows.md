@@ -44,4 +44,17 @@
 - [Dependabot Auto-merge](reusable-workflows/dependabot-automerge.md)
 - [CI（ダミー）](reusable-workflows/ci.md)（Reusable Workflow ではなく配布テンプレートのみの例外）
 
-設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md) と [ADR 0002](adr/0002-template-distribution-and-ci-name.md) を参照します。
+設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md)、[ADR 0002](adr/0002-template-distribution-and-ci-name.md)、[ADR 0003](adr/0003-consolidate-verification-into-single-job.md) を参照します。
+
+## Reusable Workflow と composite action の使い分け
+
+ADR 0003 により、共通化の手段は「ジョブを共有できるかどうか」で選びます。
+
+| 条件 | 手段 |
+| --- | --- |
+| CI と同じイベント（`pull_request`）で動き、CI のジョブに同居できる | composite action（`actions/<用途名>/action.yml`） |
+| CI と別のイベントで動き、ジョブを共有できない | Reusable Workflow（`.github/workflows/<用途名>-reusable.yml`） |
+
+Reusable Workflow は `jobs.<job_id>.uses` で呼ぶため必ず独立したジョブになり、GitHub Actions の 1 分未満切り上げ課金がジョブごとに発生します。1 つのジョブに `uses` は 1 つしか書けず `steps` とも併用できないため、複数の Reusable Workflow を 1 ジョブへまとめることはできません。
+
+「共通化したいから Reusable Workflow」ではなく、ジョブを共有できるなら composite action を選びます。Triage、Label Sync、Dependabot Auto-merge はイベントが独立しており CI のジョブに同居できないため、Reusable Workflow のまま維持します。
