@@ -2,7 +2,7 @@
 
 ## ステータス
 
-検討中。決定 1・2（下記）は方向性として固いが、配布方法とダミー CI の扱いに未解決の論点が残る。「未解決の検討事項」節を参照。
+採用（2026-07-29）。実装は別 Issue で行う。
 
 ## 背景
 
@@ -52,19 +52,30 @@ composite action は `steps.uses` で使うため呼び出し元ジョブの中�
 
 この基準により、Triage（`issues`）、Label Sync（`workflow_dispatch`）、Dependabot Auto-merge（`workflow_run`）は Reusable Workflow のまま維持する。これらは CI のジョブに同居できないため、統合しても本数は減らない。
 
+Dependabot Auto-merge が `pull_request` ではなく `workflow_run` で CI の完了を受け取るのは、次の 2 点による。
+
+- **待機の課金を避けられる。** CI の完了後に起動するため、チェックの完結を待つポーリングがほとんど発生しない。`pull_request` で同じことをすると CI と同時に起動し、完了までランナーを保持する待機時間がそのまま課金される
+- **ワークフロー定義が常に default branch のものになる。** `pull_request` では PR head の定義で動くため、PR 側からマージ条件を書き換えられる
+
 ### 3. 各リポジトリの検証を `name: CI` の単一ワークフロー・単一ジョブへ集約する
 
 `Rust CI`、`Test`、`PR ビルド検証`、`PR タイトル検証` のように別ファイルへ分かれている検証は、`ci.yml` の同一ジョブへステップとして統合する。ADR 0002 の「既存検証を段階的に `CI` へ統合する」を、ジョブ単位まで踏み込んで確定させる。
 
 並列実行による短縮より、切り上げ回数の削減を優先する。実測ではどのリポジトリも CI の実処理が 2 分未満であり、直列化による待ち時間の増加は許容できる。
 
-### 4. 配布する `ci.yml` のダミーを実検証にする（検討中）
+### 4. 配布する `ci.yml` を標準 CI にする
 
-現在の `run: true` を、checkout と ShellCheck composite action の呼び出しに置き換える案。`.sh` が無いリポジトリでは composite action が数秒で終了するため、これまでのダミーと同じ役割（Dependabot Auto-merge の `workflow_run` を発火させる）を果たせる見込みである。
+`run: true` のダミーを、checkout と ShellCheck composite action の呼び出しに置き換える。あわせて「ダミー CI」という位置づけをやめ、**標準 CI** とする。
 
-ただしこれは「ダミー CI」という現在の位置づけ自体を変えることになる（「未解決の検討事項」B 参照）。また、この変更を全リポジトリへ行き渡らせるには配布側の削除の仕組みが要る（同 A 参照）。この 2 点が解決してから確定する。
+切り上げ課金のため、`run: true`（数秒）でも ShellCheck composite action（数秒〜十数秒）でも課金は 1 分で変わらない。同じ課金であれば、`.sh` を後から追加したリポジトリで自動的に検証が効くほうがよい。Dependabot Auto-merge の `workflow_run` を発火させる役割はそのまま維持する。
 
-### 5. composite action の命名と対応関係を定める
+### 5. CI を `push: main` で発火させない
+
+CI は `pull_request` だけで発火させる。PR でグリーンだったコミットを squash merge した直後に同じ内容を再検証しており、private リポジトリでは branch protection を使わないため（[ADR-001](https://github.com/hasegawa496/repo-ops/blob/main/docs/decisions/adr-001-branch-protection-standardization.md)）、main の検証結果を gate にしている箇所は無い。
+
+除外は release-please 系のワークフローとする。これらは main への push を起点に動くことが役割そのものである。
+
+### 6. composite action の命名と対応関係を定める
 
 ADR 0001 の Reusable Workflow の規約に、composite action の規約を追加する。
 
@@ -75,16 +86,24 @@ ADR 0001 の Reusable Workflow の規約に、composite action の規約を追�
 
 `scripts/check-workflow-templates.sh` は、`actions/<用途名>/action.yml` に対応する `docs/actions/<用途名>.md` の存在も検証する。
 
-### 6. 統合状態は配布ではなく検査で担保する
+### 7. 配布は既存リポジトリの統合状態を維持しない
 
-`ci.yml` は実検証を含むためリポジトリ固有になり、`templates/` から配布できるのは CI を持たないリポジトリの分だけである。
+`ci.yml` は実検証を含むためリポジトリ固有になる。`repos apply` / `init` / `create` は共通の配布判定を通り、`name: CI` を持つ workflow が既にあるリポジトリへは `templates/.github/workflows/ci.yml` を配布しない。既存リポジトリはすべて `CI` を持つため、事実上、標準 CI が配布されるのは新規リポジトリだけになる。
 
-`hasegawa496/repo-ops` に `repos ci check` を追加し、次を検証する。違反は報告のみとし、自動修正はしない。
+配布側に「テンプレートから消えたファイルを配布先からも消す」削除の仕組みは設けない。既存リポジトリの `shellcheck.yml` の削除と CI の統合は一度きりの移行作業であり、恒久的な機構を要さない。取りこぼしは決定 8 の検査が検出する。
 
-- `name: CI` の workflow が 1 つだけ存在する
-- `CI` のジョブが 1 本である
-- `.sh` を持つリポジトリは、`CI` のジョブに ShellCheck composite action のステップを含む
-- `shellcheck.yml` が残っていない
+### 8. 統合状態は検査で担保する
+
+`hasegawa496/repo-ops` に `repos check` を追加し、次を検証する。違反は報告のみとし、自動修正はしない。違反は Issue として起票し、Issue 内で CI 統合 Skill を指定する。
+
+1. `pull_request` で発火する workflow が 1 ファイルだけである
+2. その workflow のジョブが 1 本である
+3. その workflow の `name` が `CI` である
+4. `.sh` を持つリポジトリは、CI のジョブに ShellCheck composite action のステップを含む
+5. `shellcheck.yml` が残っていない
+6. CI が `push: main` で発火しない（release-please 系は除外）
+
+`repos check` は CI だけでなく、既存の `labels check` / `settings check` / `agents-review check` もまとめて実行する入口とする。巡回を 1 コマンドで済ませ、違反をまとめて起票できるようにするためである。
 
 ## 理由
 
@@ -94,67 +113,34 @@ composite action は、共通化を維持したままジョブ本数を増やさ
 
 決定 2 は、同じ判断を将来くり返さないための基準である。「共通化したいから Reusable Workflow」ではなく「ジョブを共有できるかどうか」で選ぶ。
 
+決定 7 と決定 8 は対になっている。統合後の `ci.yml` はリポジトリ固有になるため、配布で追随させることができない。配布に削除や更新の機構を足しても、リポジトリ固有の内容を配布で維持できない事実は変わらない。維持する手段を配布から検査へ移し、検出した違反を Skill による修正へつなぐ。
+
 ## 結果
 
-PR への push 1 回あたりのジョブ数が全リポジトリで 1 になる。`hasegawa496/repo-ops` の実測を基準にすると、統合だけで 2,721 分が 1,869 分になる見込みである。
+PR への push 1 回あたりのジョブ数が全リポジトリで 1 になる。`hasegawa496/repo-ops` の実測を基準にすると、統合で 2,721 分が 1,869 分、決定 5 を加えて 1,485 分になる見込みである。
 
 失うものは次のとおりである。
 
 - **ジョブ単位の切り分けが落ちる。** ShellCheck の失敗とテストの失敗が同じジョブの中に並ぶ。ステップ名で判別する
 - **並列実行が無くなる。** 実処理が 2 分未満のため実害は小さいが、将来重い検証を足す場合は分割の是非を再検討する
-- **`ci.yml` がリポジトリ固有になる。** 配布では維持できないため、`repos ci check` による検査が前提になる
+- **`ci.yml` の配布による追随が無くなる。** 既存リポジトリの統合状態は `repos check` と CI 統合 Skill で維持する
+- **main への merge 後の検証が無くなる。** PR で検証済みの内容だけが main に入る前提に依存する
 
 ## 非対象
 
-本 ADR はジョブ本数だけを対象とする。次はコスト対策ではあるがジョブ本数とは独立であり、別途決める。
-
-- **`push: main` トリガーの削除。** 発火回数の問題であり、ジョブ本数の問題ではない
 - **`runs-on` の選択。** 単価の問題である。基準は `docs/github-workflow-operations.md` の「ランナーの選び方」で確定済み
-- **`.sh` を持たないリポジトリでの ShellCheck の要否。** 決定 4 により composite action が数秒で終了するため、ジョブ本数には影響しない
+- **`.sh` を持たないリポジトリでの ShellCheck の要否。** 決定 4 により composite action が数秒で終了し、ジョブ本数にも課金にも影響しない
 
-## 移行（暫定案、未解決の検討事項の結論待ち）
+## 移行
 
-一度に全リポジトリへ適用しない見込み。`repos apply` による配布は 16 リポジトリ分の PR と CI（約 64 分）を伴うため、テンプレート変更をまとめて 1 回で行う想定である。
-
-1. `.github` に composite action と `docs/actions/shellcheck.md` を追加し、`scripts/check-workflow-templates.sh` を拡張する（このリポジトリ内で完結、public のため無料）
-2. 配布先の `shellcheck.yml` を消す仕組みを用意する（未解決の検討事項 A）
-3. `templates/.github/workflows/ci.yml` の扱いを、未解決の検討事項 B・C の結論に基づいて決める
-4. `hasegawa496/repo-ops` に `repos ci check` を追加する
-5. 利用頻度の高いリポジトリから、`ci.yml` への統合を個別 PR で行う
-6. 残りのリポジトリは翌月の `repos apply` でまとめて配布・移行する
-7. 全リポジトリの移行完了と参照が無いことを確認してから `shellcheck-reusable.yml` を削除する
+1. `.github` に composite action と `docs/actions/shellcheck.md` を追加し、`scripts/check-workflow-templates.sh` を拡張する（このリポジトリ内で完結し、public のため無料）
+2. `templates/.github/workflows/ci.yml` を標準 CI へ更新し、`docs/reusable-workflows/ci.md` を「標準」の位置づけへ書き換える
+3. `hasegawa496/repo-ops` に `repos check` を追加する
+4. CI 統合 Skill を `hasegawa496/dotclaude` に作成する
+5. 検査の違反を Issue として起票し、Skill で各リポジトリの CI を目標形へ修正する。`shellcheck.yml` の削除と `push: main` の除去も同じ修正に含める
+6. 全リポジトリの移行完了と参照が無いことを確認してから、`shellcheck-reusable.yml` と `templates/.github/workflows/shellcheck.yml` を削除する
 
 最後の削除は ADR 0001 のタグ削除と同じ手順を踏む。移行途中は composite action と Reusable Workflow が併存するが、`shellcheck-reusable.yml` は変更せず残すため、未移行リポジトリの動作には影響しない。
-
-## 未解決の検討事項
-
-以下は、この ADR の議論の中で見えているが、まだ結論を出していない。次にこの ADR を扱うときはここから続きを検討する。
-
-### A. 配布は「削除」を扱えない
-
-`copy_shared_templates`（`hasegawa496/repo-ops` の `src/repository_ops_cli/cli.py`）は `templates/` を走査してコピーするだけで、**削除を扱わない**。`templates/` から `shellcheck.yml` を消しても、既に配布済みの各リポジトリの `.github/workflows/shellcheck.yml` は残り続ける。
-
-残ったままだと ShellCheck の Reusable Workflow 呼び出しが動き続け、1 ジョブ化が成立しない。1 ジョブ化には配布側に「テンプレートから消えたファイルを配布先からも消す」削除の仕組みが必須だが、その設計はまだ無い。
-
-一度配布すると後から消すのが難しくなる懸念があるため、配布メカニズムを変える前に、この削除の仕組みを先に用意できるかを詰める必要がある。
-
-### B. ダミー CI は「標準 CI」と呼ぶべきかもしれない
-
-ダミー CI（`run: true`）の唯一の役割は、Dependabot Auto-merge が待つ workflow 名 `CI` を発火させることであり、中身は重要でない。決定 4 で ShellCheck composite action の呼び出しに置き換える案を挙げたが、そうなると「ダミー」ではなく実体のある標準 CI になる。
-
-この位置づけの変更を、早い段階で Issue化すべきという指摘がある。`ci.yml` を持たないリポジトリでも「何もしない」のではなく「最低限 ShellCheck だけは検証する」という要件がもともとあったはずで、ダミー CI という命名・位置づけ自体を見直す余地がある。
-
-### C. Dependabot Auto-merge が `workflow_run` を使う理由の裏取りが未了
-
-auto-merge が `pull_request` ではなく `workflow_run` 経由で CI 完了を監視しているのは、Dependabot が作った PR では `GITHUB_TOKEN` が読み取り専用になるためと推測しているが、未確認である。
-
-この前提が正しければダミー CI は構造上必要で、`.sh` も実 CI も無いリポジトリ（ai-chat-platform、ai-quota-hud、my-life、win-dev-bootstrap）は PR ごとに最低 1 分を払い続ける。
-
-もし読み取り専用の制約が無ければ、auto-merge を `pull_request` トリガーに寄せられる可能性がある。その場合 Dependabot 以外のアクターはジョブレベルの `if:` でスキップ（＝非課金）でき、ダミー CI 自体が不要になり、上記 4 リポジトリの月あたりの課金が追加で減る。
-
-### D. 配布可否の判断基準が未定
-
-「実 CI を持つリポジトリへ composite action 呼び出しの 1 行をいつ・どう入れるか」の判断基準が無い。前回の分析では対象は 5 リポジトリ（ai-tools-knowledge、air-innovate-site、dotclaude、headless_cms、repo-ops）で、手動追加で足りるとしたが、リポジトリ数が増えた場合にどう判断するか（自動検出するか、`repos ci check` の失敗を起票のトリガーにするか）は決めていない。
 
 ## 検討した代替案
 
@@ -162,3 +148,5 @@ auto-merge が `pull_request` ではなく `workflow_run` 経由で CI 完了を
 - **ShellCheck を各リポジトリへ直接コピーする。** 本数は 1 になるが、修正が全リポジトリへ届かず ADR 0001 の問題が再発するため採用しない
 - **軽い検証だけ別ジョブに残し `ubuntu-slim` を使う。** ジョブを分けた時点で最低 1 分の切り上げが増えるため、同一ジョブへの統合より常に高くなる。採用しない
 - **`ci.yml` を完全に配布可能な形にし、リポジトリ固有の検証を `scripts/ci.sh` へ寄せる。** 配布で維持できる利点はあるが、mise / bun / cargo / uv のセットアップとキャッシュが action に依存しており、シェルスクリプトへ移すとキャッシュを失う。採用しない
+- **配布に削除の仕組みを設ける。** `templates/` から消えたファイルを配布先からも消す案である。`shellcheck.yml` の撤去は一度きりの移行作業であり、恒久的な機構に見合わない。加えて統合後の `ci.yml` はリポジトリ固有になるため、削除機構があっても配布で統合状態を維持できるようにはならない。採用しない（決定 7・8）
+- **Dependabot Auto-merge を `pull_request` トリガーへ移す。** ジョブレベルの `if:` で Dependabot 以外をスキップでき、実検証を持たないリポジトリでは `CI` 自体が不要になる。ただし実検証を持つリポジトリでは Auto-merge が CI と同時に起動し、完了までランナーを保持する待機時間が課金される。2026-07 実測では Auto-merge の課金は 25 run・28 分であり、これが各 1 分程度増える一方、削減できるのは実検証を持たない 4 リポジトリの `CI` にとどまる（決定 5 適用後で月 50 分未満）。効果が相殺されるうえ、決定 2 に挙げたワークフロー定義の出所も失うため採用しない
