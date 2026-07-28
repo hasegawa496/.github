@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   ci:
+    # 軽量ジョブのため ubuntu-slim を使用。
+    # 実行時間が継続的に 1 分を超える場合は ubuntu-latest への変更を検討する。
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7
