@@ -35,7 +35,7 @@ PR への push 1 回あたりの現状は次のとおりである。
 
 ### 1. ShellCheck の Reusable Workflow を廃止し composite action へ置き換える（前提）
 
-`.github/actions/shellcheck/action.yml` を新設し、`.github/workflows/shellcheck-reusable.yml` と配布テンプレート `templates/.github/workflows/shellcheck.yml` を廃止する。
+`actions/shellcheck/action.yml` を新設し、`.github/workflows/shellcheck-reusable.yml` と配布テンプレート `templates/.github/workflows/shellcheck.yml` を廃止する。
 
 composite action は `steps.uses` で使うため呼び出し元ジョブの中で動き、ジョブ本数を増やさない。1 つのジョブに何個でも並べられる。これが 1 ジョブ化の前提であり、他のすべての決定はここから派生する。
 
