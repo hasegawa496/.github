@@ -41,10 +41,6 @@ render() {
     -e 's#uses:[[:space:]]*hasegawa496/\.github/\.github/workflows/\([^[:space:]@]\+\)@[^[:space:]]\+#uses: ./.github/workflows/\1#g' \
     "$out"
 
-  if [[ "$src" == "templates/.github/workflows/shellcheck.yml" ]]; then
-    sed -i -e 's/^name: ShellCheck$/name: CI/' "$out"
-  fi
-
   if [[ "$src" == "templates/.github/workflows/"* ]] && ! head -n 1 "$out" | rg -q 'GENERATED'; then
     { echo "# GENERATED: scripts/sync-workflow-callers.sh により生成"; cat "$out"; } >"$out.new"
     mv "$out.new" "$out"

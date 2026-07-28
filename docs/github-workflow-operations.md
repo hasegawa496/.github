@@ -11,7 +11,8 @@
 - Auto-merge の待機対象は常に workflow 名 `CI` とする。
 - `CI` がないリポジトリには、成功だけを返すダミー `CI` を配置する。
 - 既に `name: CI` があるリポジトリではダミーを配置せず、既存の実 CI を保持する。
-- `ShellCheck`、`Rust CI`、`Test` など既存検証を `CI` に統合する作業は、対象リポジトリごとの変更として進める。
+- `Rust CI`、`Test` など既存検証を `CI` に統合する作業は、対象リポジトリごとの変更として進める。
+- `ShellCheck` は `CI` に統合しない。`shellcheck.yml` は `.sh` 変更時だけ発火する path フィルタを持つため、常時発火が必要な `CI` とは実行条件が異なる。`ci.yml` 側に `shellcheck` ジョブを追加すると path フィルタが効かず二重実行になる。
 
 ## PROJECT_TOKEN
 

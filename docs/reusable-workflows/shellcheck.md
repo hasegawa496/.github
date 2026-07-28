@@ -6,7 +6,14 @@
 
 ## 実行条件
 
-配布する `shellcheck.yml` は pull request と `main` への push で実行する。
+配布する `shellcheck.yml` は pull request と `main` への push で、`**/*.sh` または
+`.github/workflows/shellcheck.yml` に変更があった場合だけ実行する。`.sh` を変更しない
+変更で発火させないことで、GitHub Actions の課金分数を抑える
+（`repo-ops` の `docs/github-actions-cost-governance.md` 参照）。
+
+この path フィルタがあるため、`shellcheck.yml` は Dependabot Auto-merge の待機先である
+workflow 名 `CI` には使えない。`.github` 自身を含め、`CI` は常に発火するダミー
+（[CI（ダミー）](ci.md)）か各リポジトリ固有の CI が担う。
 
 ## 入力と権限
 
