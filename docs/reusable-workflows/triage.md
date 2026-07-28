@@ -34,8 +34,13 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
 
 ## Triage workflow（`triage.yml` → `triage-reusable.yml`）の役割
 
-- トリガー: `issues: [opened, edited, reopened]`（起票経路に依存せず、Web UI /
+- トリガー: `issues: [opened, edited]`（起票経路に依存せず、Web UI /
   CLI いずれの Issue にも反応する）
+  - `reopened` は含めない。reopen 時は本文が変わらないため、アサインは `opened`
+    限定で対象外、Project は既存 item を再利用、優先度 / Size は同じ値の書き直しと
+    なり、状態が何も変わらないまま 1 分課金されるだけである
+  - `edited` は残す。本文の `### 優先度` / `### Size` を後から直したときに
+    Project へ反映する必要があるため
 - 処理:
   1. Issue 本文から `### 優先度` / `### Size` 見出し直下の最初の非空行を抽出する
   2. `優先度` は `P0`〜`P3` で始まる値（Issue Form のフル表記 `P0: 緊急` や
