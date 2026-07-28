@@ -23,11 +23,13 @@
 - `.github/labels.yml`
 - `.github/type-labels.txt`
 - `.github/workflows/*-reusable.yml`（Reusable Workflow）
+- `actions/*/action.yml`（composite action）
 - `templates/.github/**`（配布テンプレ）
 - `scripts/sync-workflow-callers.sh` と `scripts/check-workflow-templates.sh`
 - `docs/github-workflow-operations.md`
 - `docs/reusable-workflows.md`
 - `docs/reusable-workflows/*.md`
+- `docs/actions/*.md`
 
 ## 作業ルール
 

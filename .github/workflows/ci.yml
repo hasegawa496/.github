@@ -1,0 +1,22 @@
+# このリポジトリ固有の CI。templates/.github/workflows/ci.yml から自動生成しない。
+# ci.yml は実検証を含みリポジトリ固有になるため（ADR 0003 決定7）、
+# scripts/sync-workflow-callers.sh は name: CI を持つこのファイルを検出すると
+# 上書き生成をスキップする。変更する場合はこのファイルを直接編集する。
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./actions/shellcheck
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Check workflow templates
+        run: scripts/check-workflow-templates.sh

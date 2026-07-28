@@ -1,0 +1,15 @@
+name: ShellCheck
+description: 呼び出し元ジョブの中で .sh ファイルを ShellCheck で検査する。
+
+runs:
+  using: composite
+  steps:
+    - name: Run ShellCheck
+      shell: bash
+      run: |
+        mapfile -d '' files < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+        if [[ "${#files[@]}" -eq 0 ]]; then
+          echo ".sh ファイルが見つからないため、スキップします。"
+          exit 0
+        fi
+        shellcheck -x "${files[@]}"

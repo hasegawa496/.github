@@ -41,10 +41,6 @@ render() {
     -e 's#uses:[[:space:]]*hasegawa496/\.github/\.github/workflows/\([^[:space:]@]\+\)@[^[:space:]]\+#uses: ./.github/workflows/\1#g' \
     "$out"
 
-  if [[ "$src" == "templates/.github/workflows/shellcheck.yml" ]]; then
-    sed -i -e 's/^name: ShellCheck$/name: CI/' "$out"
-  fi
-
   if [[ "$src" == "templates/.github/workflows/"* ]] && ! head -n 1 "$out" | rg -q 'GENERATED'; then
     { echo "# GENERATED: scripts/sync-workflow-callers.sh により生成"; cat "$out"; } >"$out.new"
     mv "$out.new" "$out"
@@ -81,7 +77,9 @@ while IFS= read -r -d '' src; do
   render "$src" "$dst"
 done < <(find templates -type f -print0 | sort -z)
 
-# 自己利用する検証 workflow は name: CI に変換されるため、先に同期してから判定する。
+# ci.yml は実検証を含みリポジトリ固有になるため（ADR 0003 決定7）、
+# 既に name: CI の workflow があれば上書きしない。このリポジトリ自身は
+# .github/workflows/ci.yml を手動管理しており、この分岐には入らない。
 if ! has_ci_workflow; then
   render "templates/.github/workflows/ci.yml" ".github/workflows/ci.yml"
 fi
