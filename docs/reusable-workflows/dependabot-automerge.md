@@ -17,8 +17,9 @@ Dependabot が作成した PR を、head SHA 上のすべてのチェックが�
 ## 安全条件
 
 - 実行結果が成功で、起動者が `dependabot[bot]` の場合だけ対象にする。
-- マージ前に head SHA 上のすべてのチェックを確認する。対象は Actions の workflow run、外部 CI（GitHub App）の check run、commit status で、未完了が残る間はポーリングで完結を待つ（間隔30秒、上限30分）。
+- マージ前に head SHA 上のすべてのチェックを確認する。対象は Actions の workflow run、外部 CI（GitHub App）の check run、commit status で、未完了が残る間はポーリングで完結を待つ（間隔30秒、上限10分）。待機中もランナーを保持して課金されるため、上限は実測値から決めている。2026-07 実測では PR で走るチェックの最長実処理が 299 秒（Dependabot PR に限れば 172 秒）だった。上限に達した場合はマージせず失敗するので、手動でマージすればよい。
 - すべてのチェックが成功（check run は `success` / `neutral` / `skipped`、workflow run は `success` / `skipped`、commit status は 0 件または `success`）の場合だけマージする。失敗があればマージせず終了し、タイムアウト時は workflow を失敗させる。
+- ランナーは `ubuntu-slim` を使う。`gh` と `jq` しか使わないためである。`ubuntu-slim` はジョブ実行上限が15分のため、待機上限（10分）と job の `timeout-minutes`（12分）はいずれもそれ未満に保つ。
 - 自分自身の実行と、同名 workflow（並行する Auto-merge）の実行は完結判定から除外する。
 - 全チェックを確認した head SHA と現在の PR head SHA が一致する場合だけマージする。
 

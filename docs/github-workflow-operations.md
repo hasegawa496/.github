@@ -27,7 +27,7 @@ GitHub Actions の課金は**ジョブ単位で 1 分未満を切り上げる**�
 `ubuntu-slim` を選ぶ前に次を確認する。
 
 - **ジョブ実行上限が 15 分**である。これを超える可能性があるジョブには使わない。
-  Dependabot Auto-merge は他チェックの完結を最大 30 分ポーリングするため対象外とする
+  待機ループを持つワークフローは、待機上限と job の `timeout-minutes` を 15 分未満に保つ
 - **非特権コンテナ**で動くため、`sudo` を伴う操作や Docker-in-Docker は使えない
 - 導入済みツールは限られる。`gh` / `jq` / `git` / `node` / `python` / `shellcheck` は含まれる
   （[ubuntu-slim の導入ソフトウェア一覧](https://github.com/actions/runner-images/blob/main/images/ubuntu-slim/ubuntu-slim-Readme.md)）
