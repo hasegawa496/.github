@@ -50,7 +50,9 @@ permissions:
 
 jobs:
   triage:
-    runs-on: ubuntu-latest
+    # gh と jq しか使わず数秒で終わるため、低コストな ubuntu-slim を使う
+    # （private repo での超過分の単価が $0.006/分 から $0.002/分 になる）
+    runs-on: ubuntu-slim
     steps:
       - name: アサインし Project へ追加しフィールドを更新
         env:

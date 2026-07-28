@@ -13,6 +13,27 @@
 - 既に `name: CI` があるリポジトリではダミーを配置せず、既存の実 CI を保持する。
 - `ShellCheck`、`Rust CI`、`Test` など既存検証を `CI` に統合する作業は、対象リポジトリごとの変更として進める。
 
+## ランナーの選び方
+
+GitHub Actions の課金は**ジョブ単位で 1 分未満を切り上げる**（[Actions runner pricing](https://docs.github.com/en/billing/reference/actions-runner-pricing)）。
+数秒で終わるジョブでも 1 分課金されるため、無料枠の消費はジョブ本数でほぼ決まる。
+無料枠を超過した後は分単価が効いてくるので、軽いジョブは低コストなランナーへ寄せる。
+
+| ランナー | 単価 | 使いどころ |
+| --- | --- | --- |
+| `ubuntu-slim` | $0.002/分 | `gh` / `jq` / JS action だけで完結し、数秒で終わるジョブ |
+| `ubuntu-latest` | $0.006/分 | ビルド・テストなど実処理があるジョブ |
+
+`ubuntu-slim` を選ぶ前に次を確認する。
+
+- **ジョブ実行上限が 15 分**である。これを超える可能性があるジョブには使わない。
+  Dependabot Auto-merge は他チェックの完結を最大 30 分ポーリングするため対象外とする
+- **非特権コンテナ**で動くため、`sudo` を伴う操作や Docker-in-Docker は使えない
+- 導入済みツールは限られる。`gh` / `jq` / `git` / `node` / `python` / `shellcheck` は含まれる
+  （[ubuntu-slim の導入ソフトウェア一覧](https://github.com/actions/runner-images/blob/main/images/ubuntu-slim/ubuntu-slim-Readme.md)）
+
+コスト実測の根拠は `hasegawa496/repo-ops` の `docs/github-actions-cost-analysis-2026-07.md` を参照する。
+
 ## PROJECT_TOKEN
 
 Triage は Projects v2 を更新するため `PROJECT_TOKEN` を使う。secret の一括設定はプロジェクト運用ルートの `scripts/setup-project-token-secrets.sh` が担当し、`repos.json` の有効な全リポジトリを対象とする。`.github` も Triage を配布するため、除外は残さない。
