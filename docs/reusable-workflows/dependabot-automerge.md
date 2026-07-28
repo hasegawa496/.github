@@ -8,6 +8,11 @@ Dependabot が作成した PR を、head SHA 上のすべてのチェックが�
 
 配布する `dependabot-automerge.yml` は `workflow_run` を受け取り、発火用の監視対象を `CI` に固定する。`CI` は発火のトリガーであり、マージ可否の gate ではない（[CI（ダミー）](ci.md)）。
 
+`pull_request` ではなく `workflow_run` を使うのは次の理由による（[ADR 0003](../adr/0003-consolidate-verification-into-single-job.md) 決定 2）。
+
+- CI の完了後に起動するため、チェックの完結を待つポーリングがほとんど発生しない。`pull_request` では CI と同時に起動し、完了までランナーを保持する待機時間がそのまま課金される。
+- ワークフロー定義が常に default branch のものになる。`pull_request` では PR head の定義で動くため、PR 側からマージ条件を書き換えられる。
+
 ## 入力と権限
 
 - 入力: なし。
