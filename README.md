@@ -12,7 +12,6 @@
   - `.github/type-labels.txt`
 - Reusable Workflow
   - `.github/workflows/label-sync-reusable.yml`
-  - `.github/workflows/shellcheck-reusable.yml`（廃止予定。composite action へ移行中）
   - `.github/workflows/triage-reusable.yml`
   - `.github/workflows/dependabot-automerge-reusable.yml`
 - composite action

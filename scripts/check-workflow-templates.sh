@@ -12,22 +12,6 @@ cd "$repo_root"
 
 [[ -d templates/.github ]] || die "templates/.github が見つかりません"
 
-# 廃止予定の Reusable Workflow。composite action へ置き換え済みで
-# 配布テンプレート・自己利用の呼び出し側は失うが、既存リポジトリが
-# @main で参照し続けるため本体（*-reusable.yml）と個別仕様は残す
-# （ADR 0003 移行手順6）。
-deprecated_reusable_workflows=(
-  shellcheck
-)
-
-is_deprecated_reusable_workflow() {
-  local name="$1" deprecated
-  for deprecated in "${deprecated_reusable_workflows[@]}"; do
-    [[ "$deprecated" == "$name" ]] && return 0
-  done
-  return 1
-}
-
 shopt -s nullglob
 reusable_workflows=(.github/workflows/*-reusable.yml)
 (( ${#reusable_workflows[@]} > 0 )) || die ".github/workflows/*-reusable.yml が見つかりません"
@@ -54,13 +38,7 @@ for reusable_workflow in "${reusable_workflows[@]}"; do
   caller=".github/workflows/${workflow_name}.yml"
   documentation="docs/reusable-workflows/${workflow_name}.md"
 
-  if is_deprecated_reusable_workflow "$workflow_name"; then
-    required_files=("$documentation")
-  else
-    required_files=("$template" "$caller" "$documentation")
-  fi
-
-  for required_file in "${required_files[@]}"; do
+  for required_file in "$template" "$caller" "$documentation"; do
     if [[ ! -f "$required_file" ]]; then
       echo "NG: $reusable_workflow: 対応するファイルがありません: $required_file" >&2
       errors=$((errors + 1))

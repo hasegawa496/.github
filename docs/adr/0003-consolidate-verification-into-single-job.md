@@ -138,9 +138,9 @@ PR への push 1 回あたりのジョブ数が全リポジトリで 1 になる
 3. `hasegawa496/repo-ops` に `repos check` を追加する
 4. CI 統合 Skill を `hasegawa496/dotclaude` に作成する
 5. 検査の違反を Issue として起票し、Skill で各リポジトリの CI を目標形へ修正する。`shellcheck.yml` の削除と `push: main` の除去も同じ修正に含める
-6. 全リポジトリの移行完了と参照が無いことを確認してから、`shellcheck-reusable.yml` と `templates/.github/workflows/shellcheck.yml` を削除する
+6. 全リポジトリの移行完了と参照が無いことを確認してから、`shellcheck-reusable.yml` と `templates/.github/workflows/shellcheck.yml` を削除する（2026-07-29 完了）
 
-最後の削除は ADR 0001 のタグ削除と同じ手順を踏む。移行途中は composite action と Reusable Workflow が併存するが、`shellcheck-reusable.yml` は変更せず残すため、未移行リポジトリの動作には影響しない。
+最後の削除は ADR 0001 のタグ削除と同じ手順を踏んだ。移行途中は composite action と Reusable Workflow が併存したが、`shellcheck-reusable.yml` は変更せず残したため、未移行リポジトリの動作に影響は無かった。
 
 ## 検討した代替案
 
