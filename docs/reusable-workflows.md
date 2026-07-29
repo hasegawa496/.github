@@ -42,7 +42,6 @@
 ## 提供する Workflow
 
 - [Label Sync](reusable-workflows/label-sync.md)
-- [ShellCheck](reusable-workflows/shellcheck.md)（廃止予定。composite action の [ShellCheck](actions/shellcheck.md) へ置き換え中で、既存リポジトリの移行完了後に削除する）
 - [Triage](reusable-workflows/triage.md)
 - [Dependabot Auto-merge](reusable-workflows/dependabot-automerge.md)
 - [CI](reusable-workflows/ci.md)（Reusable Workflow ではなく配布テンプレートのみの例外）
