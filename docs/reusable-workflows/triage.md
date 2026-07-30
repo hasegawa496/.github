@@ -30,7 +30,7 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
   なる（例: `### 優先度` の次の行に選択値が入る）
 
 対象ファイル: `bug.yml` / `feature.yml` / `improvement.yml` / `task.yml` /
-`documentation.yml`。5 種類とも `優先度` / `Size` の見出し名・選択肢は統一されている。
+`documentation.yml`。5 種類とも `優先度` / `Size` / `リスク` の見出し名・選択肢は統一されている。
 
 ## Triage workflow（`triage.yml` → `triage-reusable.yml`）の役割
 
@@ -42,7 +42,7 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
   - `edited` は残す。本文の `### 優先度` / `### Size` を後から直したときに
     Project へ反映する必要があるため
 - 処理:
-  1. Issue 本文から `### 優先度` / `### Size` 見出し直下の最初の非空行を抽出する
+  1. Issue 本文から `### 優先度` / `### Size` / `### リスク` 見出し直下の最初の非空行を抽出する
   2. `優先度` は `P0`〜`P3` で始まる値（Issue Form のフル表記 `P0: 緊急` や
      短縮表記 `P0` のいずれでも可）を、Project の実際の選択肢名である
      `P0`〜`P3` に正規化する。`未定` はそのまま扱う（Project 側に対応する
@@ -50,9 +50,13 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
      `未定` を削除済みだが、削除前に起票された既存 Issue の本文には残るため、
      workflow 側の扱いは変更していない
   3. `Size` は大文字に正規化する（`m` → `M`）
-  4. Project（`project_number` input、既定 12）に Issue を追加する
+  4. `リスク` が `high`（大文字小文字を問わない）の場合は `risk-high` ラベルを付与する。
+     `高リスク` を `normal` に戻した場合（`edited` イベント）はラベルを除去する。
+     `### リスク` 見出しが存在しない既存 Issue は `normal` として扱い、ラベルを除去する。
+     この処理は `GITHUB_TOKEN`（`issues: write`）のみで完了し、`PROJECT_TOKEN` は不要。
+  5. Project（`project_number` input、既定 12）に Issue を追加する
      - 既に Project に追加済みの item があればそれを再利用し、二重追加はしない
-  5. Project の `Priority` / `Size` フィールド（Single select）に、正規化できた値**だけ**を
+  6. Project の `Priority` / `Size` フィールド（Single select）に、正規化できた値**だけ**を
      独立して設定する。優先度/Size は互いに独立に扱い、片方しか取得できない場合
      （見出しが無い・値が空・選択肢に一致しない・フィールド名が不一致など）でも、
      もう片方が取得できていればそちらだけは設定する
@@ -67,8 +71,8 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
      - Issue Form の dropdown 表示テキスト（`P0: 緊急` 等）はあくまで Issue 本文
        上の表記であり、Project 側の選択肢名とは異なる。混同しないこと
 - 失敗時の挙動: **ハード失敗せず、Issue にフォールバックコメントを付けて
-  `exit 0` で正常終了する。** Project への追加（4.）は優先度/Size の取得成否に
-  関係なく独立して実行する。優先度/Size のフィールド更新（5.）は互いに独立で、
+  `exit 0` で正常終了する。** Project への追加（5.）は優先度/Size の取得成否に
+  関係なく独立して実行する。優先度/Size のフィールド更新（6.）は互いに独立で、
   一方が設定できない事情があってももう一方は設定を試みる。
   想定される失敗パターンと対応するコメント:
   - `PROJECT_TOKEN` シークレット未設定 → 「トークンが未設定です」
@@ -111,7 +115,8 @@ projects（Project への追加）は Triage workflow が担うため、呼び�
   の実行や `project` OAuth scope の確認を行う必要はない
 - 本文: `### 優先度` と `### Size` の見出しを、Issue Forms と同じ表記
   （`P0: 緊急`〜`P3: 低` / `XS`〜`XL`、または `P0`〜`P3` の短縮形）で
-  含める。見出し名・選択値の表記が変わると Triage workflow が値を抽出できず、
+  含める。高リスク Issue の場合は `### リスク` 見出しの下に `high` を含める。
+  見出し名・選択値の表記が変わると Triage workflow が値を抽出できず、
   フォールバックコメントが付くだけで Project フィールドは更新されない
 
 Triage workflow は、この本文フォーマットが守られている前提で

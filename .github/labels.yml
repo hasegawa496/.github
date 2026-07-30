@@ -40,6 +40,11 @@
   color: "bfd4f2"
   description: "依存先の open Issue などがあり、patrol では今は後回しにする"
 
+# risk ラベル
+- name: risk-high
+  color: "e11d48"
+  description: "高リスク。AIエージェントのルーティングで注意が必要"
+
 # status ラベル
 - name: duplicate
   color: "cfd3d7"

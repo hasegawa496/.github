@@ -37,6 +37,17 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: risk
+    attributes:
+      label: リスク
+      options:
+        - normal
+        - high
+      default: 0
+    validations:
+      required: true
+
   - type: textarea
     id: summary
     attributes:
