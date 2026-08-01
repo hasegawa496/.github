@@ -1,7 +1,15 @@
 # CI が未整備のリポジトリ用の標準 workflow。
 # 既に name: CI を持つ workflow がある場合は配布しない。
-# 最低限 ShellCheck を実行しつつ、Dependabot Auto-merge の workflow_run を
-# 必ず発火させるトリガーも兼ねる（docs/reusable-workflows/ci.md）。
+#
+# name: CI は変更しないこと。Dependabot Auto-merge は workflow_run で
+# 「CI」という名前の workflow の完了を発火トリガーにしている。中身は問わない。
+# マージ可否は発火後にそのSHA上の全チェック（Actions workflow run・外部CIの
+# check run・commit status）を別途確認して決まる仕組みで、CI自身の中身が
+# gate になっているわけではない。
+#
+# 現状の実処理は ShellCheck のみだが、これは現時点の中身であって上記の
+# トリガー要件とは独立している。ShellCheck が不要なリポジトリでは、
+# name: CI を保ったまま中身だけ入れ替えてよい。
 name: CI
 
 on:
