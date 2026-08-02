@@ -53,7 +53,12 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
   4. `リスク` が `high`（大文字小文字を問わない）の場合は `risk-high` ラベルを付与する。
      `高リスク` を `normal` に戻した場合（`edited` イベント）はラベルを除去する。
      `### リスク` 見出しが存在しない既存 Issue は `normal` として扱い、ラベルを除去する。
-     この処理は `GITHUB_TOKEN`（`issues: write`）のみで完了し、`PROJECT_TOKEN` は不要。
+     この処理は `GITHUB_TOKEN`（`issues: write`）のみで完了し、`PROJECT_TOKEN` は不要
+     - **前提として配布先に `risk-high` ラベルが存在している必要がある。** ラベル定義の
+       正本は `.github/labels.yml` で、配布先へは Label Sync（`workflow_dispatch`）で
+       反映される。`labels.yml` へ `risk-high` を追加した変更を `main` にマージした後、
+       全配布先で Label Sync を実行する。未実行のリポジトリではラベル付与が失敗し、
+       後述のフォールバックコメントが付く
   5. Project（`project_number` input、既定 12）に Issue を追加する
      - 既に Project に追加済みの item があればそれを再利用し、二重追加はしない
   6. Project の `Priority` / `Size` フィールド（Single select）に、正規化できた値**だけ**を
@@ -75,6 +80,8 @@ CLI で `--body` を直接指定して起票する場合は Issue Forms を経�
   関係なく独立して実行する。優先度/Size のフィールド更新（6.）は互いに独立で、
   一方が設定できない事情があってももう一方は設定を試みる。
   想定される失敗パターンと対応するコメント:
+  - `risk-high` ラベル付与の API 呼び出し失敗（配布先で Label Sync 未実行など）
+    → 「risk-high ラベルを付与できませんでした」
   - `PROJECT_TOKEN` シークレット未設定 → 「トークンが未設定です」
   - Project 取得失敗（owner/number 不一致） → 「Project の取得に失敗しました」
   - Project 追加の API 呼び出し失敗（権限不足など） → 「Project に追加できませんでした」
