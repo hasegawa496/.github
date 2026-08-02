@@ -1,7 +1,14 @@
-# CI が未整備のリポジトリ用の標準 workflow。
-# 既に name: CI を持つ workflow がある場合は配布しない。
-# 最低限 ShellCheck を実行しつつ、Dependabot Auto-merge の workflow_run を
-# 必ず発火させるトリガーも兼ねる（docs/reusable-workflows/ci.md）。
+# このリポジトリの標準 CI。PR ごとに実行する検証をこの workflow にまとめる。
+# 現在の中身は ShellCheck だけなので、必要な検証は steps に追加してよい。
+# 不要な step は外してよい。
+#
+# 初期テンプレートは hasegawa496/.github の templates/.github/workflows/ci.yml。
+# 配布は name: CI を持つ workflow がないリポジトリへの初回のみで、
+# 以後このファイルが上書きされることはない。
+
+# name は変更しない。Dependabot Auto-merge が「CI」という名前の workflow の
+# 完了を発火トリガーにしているため、改名すると自動マージが動かなくなる。
+# マージ可否は発火後の全チェック確認で決まるので、中身の入れ替えは自由でよい。
 name: CI
 
 on:
