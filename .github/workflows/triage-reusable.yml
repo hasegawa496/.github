@@ -112,6 +112,7 @@ jobs:
 
           priority_opt="$(extract_first_line_under_heading "優先度")"
           size_opt="$(extract_first_line_under_heading "Size")"
+          risk_opt="$(extract_first_line_under_heading "リスク")"
 
           # 簡易正規化（Issue Form のフル表記「P1: 高」等も短縮表記も、
           # Project の選択肢名である P0〜P3 に正規化する）
@@ -126,6 +127,20 @@ jobs:
           case "${size_opt^^}" in
             XS|S|M|L|XL) size_opt="${size_opt^^}" ;;
           esac
+
+          # risk-high ラベルの付与・除去（GITHUB_TOKEN のみで実行できるため PROJECT_TOKEN 確認より前に処理する）
+          # ### リスク 見出しが無い既存 Issue や risk=normal の場合はラベルを除去する（冪等）
+          if [[ "${risk_opt,,}" == "high" ]]; then
+            # 配布先で Label Sync が未実行だと risk-high ラベルが存在せず失敗する。
+            # 黙って握り潰すとルーティングに必要な分類が付かないままになるため、コメントで知らせる。
+            if ! GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
+              -X POST -f "labels[]=risk-high" >/dev/null 2>&1; then
+              comment "risk-high ラベルを付与できませんでした。リポジトリに risk-high ラベルが存在するか（Label Sync 実行済みか）確認してください。\n\nIssue: ${issue_url}"
+            fi
+          else
+            GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/labels/risk-high" \
+              -X DELETE >/dev/null 2>&1 || true
+          fi
 
           if [[ -z "${PROJECT_TOKEN:-}" ]]; then
             comment "Projects v2 を更新するためのトークンが未設定です。PROJECT_TOKEN（Project への書き込み権限）を設定してください。\n\n- 取得値: 優先度=${priority_opt}, Size=${size_opt}\n\nIssue: ${issue_url}"
