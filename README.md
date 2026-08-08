@@ -18,6 +18,10 @@
   - `actions/shellcheck/action.yml`
 - 配布テンプレート
   - `templates/.github/**`
+- hk 共通フック設定
+  - `hk/Shared.pkl`
+  - 配布専用のベースモジュール。`templates/.github/**` のように配布先へコピーされるのではなく、各管理対象リポジトリの `hk.pkl` から `amends` でリモート参照される
+  - `main` へのマージが即座に全リポジトリへ波及するため、内容は言語非依存の共通ルールに限定する
 - 自己利用の同期・検証スクリプト
   - `scripts/sync-workflow-callers.sh`
   - `scripts/check-workflow-templates.sh`

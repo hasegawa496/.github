@@ -1,0 +1,29 @@
+amends "package://github.com/jdx/hk/releases/download/v1.54.0/hk@1.54.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.54.0/hk@1.54.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    ["actionlint"] = Builtins.actionlint
+    ["check_added_large_files"] = Builtins.check_added_large_files
+    ["check_merge_conflict"] = Builtins.check_merge_conflict
+    ["detect_private_key"] = Builtins.detect_private_key
+    ["gitleaks"] = Builtins.gitleaks
+    ["shellcheck"] = Builtins.shellcheck
+    ["shfmt"] = Builtins.shfmt
+    ["typos"] = Builtins.typos
+    ["yamllint"] = Builtins.yamllint
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}
