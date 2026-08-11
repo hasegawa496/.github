@@ -26,4 +26,12 @@ hooks {
     ["check"] {
         steps = linters
     }
+    ["pre-push"] {
+        steps {
+            ["no_push_to_protected_branch"] = new Step {
+                stdin = "{{ hook_stdin }}"
+                check = "! awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
+            }
+        }
+    }
 }
