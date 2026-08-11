@@ -28,7 +28,9 @@ hooks {
     }
     ["pre-push"] {
         steps {
-            ["no_commit_to_branch"] = Builtins.no_commit_to_branch
+            ["no_push_to_protected_branch"] = new Step {
+                check = "! printf '%s' \"{{ hook_stdin }}\" | awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
+            }
         }
     }
 }
