@@ -29,7 +29,8 @@ hooks {
     ["pre-push"] {
         steps {
             ["no_push_to_protected_branch"] = new Step {
-                check = "! printf '%s' \"{{ hook_stdin }}\" | awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
+                stdin = "{{ hook_stdin }}"
+                check = "! awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
             }
         }
     }
