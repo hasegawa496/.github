@@ -26,4 +26,9 @@ hooks {
     ["check"] {
         steps = linters
     }
+    ["pre-push"] {
+        steps {
+            ["no_commit_to_branch"] = Builtins.no_commit_to_branch
+        }
+    }
 }
