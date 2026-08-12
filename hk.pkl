@@ -1,1 +1,18 @@
 amends "https://raw.githubusercontent.com/hasegawa496/.github/refs/heads/main/hk/Shared.pkl"
+
+// Shared.pkl の共通 linter に加え、このリポジトリ固有の配布テンプレート整合性検証を追加する。
+hooks {
+    ["pre-commit"] {
+        steps {
+            ["check_workflow_templates"] {
+                glob = List(
+                    ".github/workflows/**",
+                    "templates/**",
+                    "scripts/sync-workflow-callers.sh",
+                    "scripts/check-workflow-templates.sh",
+                )
+                check = "scripts/check-workflow-templates.sh"
+            }
+        }
+    }
+}
