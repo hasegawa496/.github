@@ -1,0 +1,1 @@
+amends "https://raw.githubusercontent.com/hasegawa496/.github/refs/heads/main/hk/Shared.pkl"
