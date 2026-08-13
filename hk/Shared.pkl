@@ -6,7 +6,15 @@ local linters = new Mapping<String, Step> {
     ["check_added_large_files"] = Builtins.check_added_large_files
     ["check_merge_conflict"] = Builtins.check_merge_conflict
     ["detect_private_key"] = Builtins.detect_private_key
-    ["gitleaks"] = Builtins.gitleaks
+    ["gitleaks"] = new Step {
+        // Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
+        // `gitleaks dir` はディレクトリ引数を1つしか受け付けない。ステージ済みファイルが複数あると
+        // hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
+        // を走査して無関係な既存ファイルの誤検知を大量に出す。`git --staged` はステージ済み差分だけを
+        // 対象にするため、この問題が起きない。
+        types = List("text")
+        check = "gitleaks git --staged --redact --verbose --no-banner"
+    }
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
