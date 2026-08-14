@@ -15,4 +15,18 @@ hooks {
             }
         }
     }
+    // hk/Shared.pkl は各管理対象リポジトリの hk.pkl から amends されるが、
+    // hk はリモート import を含む設定を ~/.cache/hk にキャッシュし、時間による失効が無い。
+    // このクローンで hk/Shared.pkl の変更を取り込む git merge（PR マージ後の git pull 等）が
+    // 起きたときにキャッシュを自動でクリアし、Shared.pkl 更新が反映されない事故を防ぐ。
+    // post-merge のステップは glob によるファイルフィルタがマージ差分ではなく作業ツリーの
+    // 変更ファイルを見てしまい常に空集合になるため使えない。check コマンド側で
+    // ORIG_HEAD..HEAD の差分を見て対象ファイルの有無を判定する。
+    ["post-merge"] {
+        steps {
+            ["clear_hk_cache"] {
+                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+            }
+        }
+    }
 }
