@@ -13,6 +13,42 @@ hooks {
                 )
                 check = "scripts/check-workflow-templates.sh"
             }
+            // post-merge/post-checkout フックは、既存クローンに以前の `hk install` で
+            // 作られた git hook shim が無いと発火しない。新しい hook 種別を hk.pkl に
+            // 追加しても、既存クローン側で `hk install` を再実行しない限り shim は
+            // 増えないため、まさにキャッシュを自動クリアしたい既存環境で機能しない。
+            // pre-commit の shim は既存クローンに既に入っているため、ここで
+            // `hk install` を毎回実行して shim 一式を追従させ、次のコミット以降は
+            // post-merge/post-checkout が確実に発火する状態を自己修復する。
+            ["ensure_hk_hooks_installed"] {
+                check = "hk install --mise >/dev/null 2>&1 || true"
+            }
+        }
+    }
+    // hk/Shared.pkl は各管理対象リポジトリの hk.pkl から amends されるが、
+    // hk はリモート import を含む設定を ~/.cache/hk にキャッシュし、時間による失効が無い。
+    // このクローンで hk/Shared.pkl の変更を取り込む git merge（PR マージ後の git pull 等）が
+    // 起きたときにキャッシュを自動でクリアし、Shared.pkl 更新が反映されない事故を防ぐ。
+    // post-merge のステップは glob によるファイルフィルタがマージ差分ではなく作業ツリーの
+    // 変更ファイルを見てしまい常に空集合になるため使えない。check コマンド側で
+    // ORIG_HEAD..HEAD の差分を見て対象ファイルの有無を判定する。
+    ["post-merge"] {
+        steps {
+            ["clear_hk_cache"] {
+                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+            }
+        }
+    }
+    // post-merge だけでは、default branch がどの worktree でも checkout されていない
+    // 状態で local main の ref だけを直接更新する運用（例: git-cleanup.sh の
+    // sync_default_branch が `git update-ref` にフォールバックするケース）を取りこぼす。
+    // git update-ref はフックを経由しないため、その後 `git switch main` 等で checkout
+    // し直した時点の post-checkout で改めて hk/Shared.pkl の差分を確認する。
+    ["post-checkout"] {
+        steps {
+            ["clear_hk_cache"] {
+                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+            }
         }
     }
 }
