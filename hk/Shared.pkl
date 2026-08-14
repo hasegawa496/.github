@@ -16,19 +16,21 @@ local linters = new Mapping<String, Step> {
 // `gitleaks dir` はディレクトリ引数を1つしか受け付けない。対象ファイルが複数あると
 // hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
 // を走査して無関係な既存ファイルの誤検知を大量に出す。
-// pre-commit はステージ済み差分だけを見れば十分なので `git --staged` を使うが、
-// `check`/`fix` は checkout 済みの全ファイルを検査する必要があり、ステージが空（クリーンな
-// checkout 上のCI実行など）だと `--staged` は何も検査せず成功してしまう。
-// `check`/`fix` 側は git 管理下の全履歴を対象にする `gitleaks git`（引数無し）を使うことで、
-// 対象ファイル数に関わらず単一コマンドで完結し、.gitignore対象も含めない。
+// pre-commit はステージ済み差分だけを見れば十分なので `git --staged` を使う。
+// `check`/`fix` は次の2系統を両方満たす必要がある。
+//   1. 過去にコミット済みの漏洩（`gitleaks git`、コミット履歴を対象）
+//   2. 作業ツリー上の未コミット・未追跡ファイルの漏洩（コミット履歴には現れない）
+// 2 を `gitleaks dir` 1回で行うと元の複数引数バグに戻るため、`git ls-files` で
+// 対象ファイル（追跡済み + 追跡対象外だが .gitignore 対象でもないファイル）を列挙し、
+// ファイルごとに `gitleaks dir` を1引数で呼び出す。
 local gitleaksPreCommit = new Step {
     types = List("text")
     check = "gitleaks git --staged --redact --verbose --no-banner"
 }
 
-local gitleaksFullHistory = new Step {
+local gitleaksFullScan = new Step {
     types = List("text")
-    check = "gitleaks git --redact --verbose --no-banner"
+    check = "gitleaks git --redact --verbose --no-banner && git ls-files -z --cached --others --exclude-standard | xargs -0 -r -n1 gitleaks dir --redact --verbose --no-banner"
 }
 
 hooks {
@@ -48,7 +50,7 @@ hooks {
             for (name, step in linters) {
                 [name] = step
             }
-            ["gitleaks"] = gitleaksFullHistory
+            ["gitleaks"] = gitleaksFullScan
         }
     }
     ["check"] {
@@ -56,7 +58,7 @@ hooks {
             for (name, step in linters) {
                 [name] = step
             }
-            ["gitleaks"] = gitleaksFullHistory
+            ["gitleaks"] = gitleaksFullScan
         }
     }
     ["pre-push"] {
