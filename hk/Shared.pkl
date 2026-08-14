@@ -6,25 +6,87 @@ local linters = new Mapping<String, Step> {
     ["check_added_large_files"] = Builtins.check_added_large_files
     ["check_merge_conflict"] = Builtins.check_merge_conflict
     ["detect_private_key"] = Builtins.detect_private_key
-    ["gitleaks"] = Builtins.gitleaks
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
     ["yamllint"] = Builtins.yamllint
 }
 
+// Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
+// `gitleaks dir` はディレクトリ引数を1つしか受け付けない。対象ファイルが複数あると
+// hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
+// を走査して無関係な既存ファイルの誤検知を大量に出す。
+// pre-commit はステージ済み差分だけを見れば十分なので `git --staged` を使う。
+// `check`/`fix` は次の2系統を両方満たす必要がある。
+//   1. 過去にコミット済みの漏洩（`gitleaks git`、コミット履歴を対象）
+//   2. 作業ツリー上の未コミット・未追跡ファイルの漏洩（コミット履歴には現れない）
+// 2 を `gitleaks dir` 1回で行うと元の複数引数バグに戻るため、`git ls-files` で
+// 対象ファイル（追跡済み + 追跡対象外だが .gitignore 対象でもないファイル）を列挙し、
+// ファイルごとに `gitleaks dir` を1引数で呼び出す。
+// hk のデフォルトシェルは `sh -o errexit -c`（POSIX sh）であり、GNU 版 `xargs` 固有の
+// `-r`（`--no-run-if-empty`）は macOS 等の BSD 版 `xargs` に存在しないため使わない。
+// 代わりに `while read` ループで1ファイルずつ処理し、対象ファイルが0件なら
+// ループ自体が実行されないことで同じ効果（無引数呼び出しをしない）を得る。
+// `git ls-files --cached` は index 上のパスを列挙するため、作業ツリーから削除済み
+// （かつ未ステージ）のファイルも含まれる。存在しないパスを `gitleaks dir` に渡すと
+// エラー終了するため、ループ内で現存チェックしてスキップする。
+// `git ls-files` は core.quotePath（既定 true）により、日本語等の非ASCII文字を含む
+// パスを `"\346..."` のような引用符付き8進エスケープで出力するため、`-z`（NUL区切り、
+// 常に非エスケープの生パスを出力）を使う。NUL区切りを改行区切りへ変換すると、
+// 万一パス自体に改行が含まれる場合に同じ問題が再発するため変換しない。
+// `xargs -0` はNULを直接扱え、かつ `-r`（`--no-run-if-empty`）と異なりGNU/BSD双方の
+// 実装にあるため使う。`xargs -0 -n1 -- sh -c '...' _` の形で1パスずつ実引数として
+// 渡す（`-I` によるテキスト置換はパス中の引用符等でコマンドが壊れうるため使わない）。
+// 空入力時に無引数実行しないためのガードは、対象ファイルの有無を
+// （キューティング有無に関わらず出力が空かどうかだけを見る）非NULモードの
+// `git ls-files` で判定してから、実際の走査だけを `-z` 経路で行う。
+// `[ -e ]` ではなく `[ -f ]` で現存チェックする。`git ls-files --cached` は
+// submodule の gitlink パス（index mode 160000）も列挙し、そのパスは作業ツリー上では
+// ディレクトリとして存在する。`-e` は真になり、`gitleaks dir` にディレクトリを渡すと
+// そのsubmodule配下（親リポジトリの管理外）を丸ごと再帰走査してしまう。`-f` は通常
+// ファイルにしか真にならないため、submodule のディレクトリを自然に除外できる。
+// `gitleaks dir` へのパスはオプション終端 `--` の後に渡す。`--` が無いと、
+// `--exit-code=0` のような対象パスをgitleaksがオプションとして解釈し、
+// 挙動（この例では漏洩検出時の終了コード）が意図せず変わりうる。
+local gitleaksPreCommit = new Step {
+    types = List("text")
+    check = "gitleaks git --staged --redact --verbose --no-banner"
+}
+
+local gitleaksFullScan = new Step {
+    types = List("text")
+    check = #"""
+        gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -f "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner -- "$f"' _; }
+        """#
+}
+
 hooks {
     ["pre-commit"] {
         fix = true
         stash = "git"
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksPreCommit
+        }
     }
     ["fix"] {
         fix = true
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullScan
+        }
     }
     ["check"] {
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullScan
+        }
     }
     ["pre-push"] {
         steps {
