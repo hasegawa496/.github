@@ -6,33 +6,58 @@ local linters = new Mapping<String, Step> {
     ["check_added_large_files"] = Builtins.check_added_large_files
     ["check_merge_conflict"] = Builtins.check_merge_conflict
     ["detect_private_key"] = Builtins.detect_private_key
-    ["gitleaks"] = new Step {
-        // Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
-        // `gitleaks dir` はディレクトリ引数を1つしか受け付けない。ステージ済みファイルが複数あると
-        // hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
-        // を走査して無関係な既存ファイルの誤検知を大量に出す。`git --staged` はステージ済み差分だけを
-        // 対象にするため、この問題が起きない。
-        types = List("text")
-        check = "gitleaks git --staged --redact --verbose --no-banner"
-    }
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
     ["yamllint"] = Builtins.yamllint
 }
 
+// Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
+// `gitleaks dir` はディレクトリ引数を1つしか受け付けない。対象ファイルが複数あると
+// hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
+// を走査して無関係な既存ファイルの誤検知を大量に出す。
+// pre-commit はステージ済み差分だけを見れば十分なので `git --staged` を使うが、
+// `check`/`fix` は checkout 済みの全ファイルを検査する必要があり、ステージが空（クリーンな
+// checkout 上のCI実行など）だと `--staged` は何も検査せず成功してしまう。
+// `check`/`fix` 側は git 管理下の全履歴を対象にする `gitleaks git`（引数無し）を使うことで、
+// 対象ファイル数に関わらず単一コマンドで完結し、.gitignore対象も含めない。
+local gitleaksPreCommit = new Step {
+    types = List("text")
+    check = "gitleaks git --staged --redact --verbose --no-banner"
+}
+
+local gitleaksFullHistory = new Step {
+    types = List("text")
+    check = "gitleaks git --redact --verbose --no-banner"
+}
+
 hooks {
     ["pre-commit"] {
         fix = true
         stash = "git"
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksPreCommit
+        }
     }
     ["fix"] {
         fix = true
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullHistory
+        }
     }
     ["check"] {
-        steps = linters
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullHistory
+        }
     }
     ["pre-push"] {
         steps {
