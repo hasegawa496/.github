@@ -31,11 +31,15 @@ local linters = new Mapping<String, Step> {
 // （かつ未ステージ）のファイルも含まれる。存在しないパスを `gitleaks dir` に渡すと
 // エラー終了するため、ループ内で現存チェックしてスキップする。
 // `git ls-files` は core.quotePath（既定 true）により、日本語等の非ASCII文字を含む
-// パスを `"\346..."` のような引用符付き8進エスケープで出力する。改行区切りで
-// そのまま `read` すると引用符付き文字列がそのまま変数に入り、実在チェックが
-// 常に失敗して該当ファイルが黙ってスキップされる。`-z`（NUL区切り、常に非エスケープの
-// 生パスを出力）を使い、`read -d` が使えないPOSIX sh（dash等）でも動くよう
-// `tr '\0' '\n'` で改行区切りへ変換してから読む。
+// パスを `"\346..."` のような引用符付き8進エスケープで出力するため、`-z`（NUL区切り、
+// 常に非エスケープの生パスを出力）を使う。NUL区切りを改行区切りへ変換すると、
+// 万一パス自体に改行が含まれる場合に同じ問題が再発するため変換しない。
+// `xargs -0` はNULを直接扱え、かつ `-r`（`--no-run-if-empty`）と異なりGNU/BSD双方の
+// 実装にあるため使う。`xargs -0 -n1 -- sh -c '...' _` の形で1パスずつ実引数として
+// 渡す（`-I` によるテキスト置換はパス中の引用符等でコマンドが壊れうるため使わない）。
+// 空入力時に無引数実行しないためのガードは、対象ファイルの有無を
+// （キューティング有無に関わらず出力が空かどうかだけを見る）非NULモードの
+// `git ls-files` で判定してから、実際の走査だけを `-z` 経路で行う。
 local gitleaksPreCommit = new Step {
     types = List("text")
     check = "gitleaks git --staged --redact --verbose --no-banner"
@@ -44,7 +48,7 @@ local gitleaksPreCommit = new Step {
 local gitleaksFullScan = new Step {
     types = List("text")
     check = #"""
-        gitleaks git --redact --verbose --no-banner && git ls-files -z --cached --others --exclude-standard | tr '\0' '\n' | { status=0; while IFS= read -r f; do [ -e "$f" ] || continue; gitleaks dir --redact --verbose --no-banner "$f" || status=1; done; exit $status; }
+        gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -e "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner "$f"' _; }
         """#
 }
 
