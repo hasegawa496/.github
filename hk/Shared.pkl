@@ -40,6 +40,14 @@ local linters = new Mapping<String, Step> {
 // 空入力時に無引数実行しないためのガードは、対象ファイルの有無を
 // （キューティング有無に関わらず出力が空かどうかだけを見る）非NULモードの
 // `git ls-files` で判定してから、実際の走査だけを `-z` 経路で行う。
+// `[ -e ]` ではなく `[ -f ]` で現存チェックする。`git ls-files --cached` は
+// submodule の gitlink パス（index mode 160000）も列挙し、そのパスは作業ツリー上では
+// ディレクトリとして存在する。`-e` は真になり、`gitleaks dir` にディレクトリを渡すと
+// そのsubmodule配下（親リポジトリの管理外）を丸ごと再帰走査してしまう。`-f` は通常
+// ファイルにしか真にならないため、submodule のディレクトリを自然に除外できる。
+// `gitleaks dir` へのパスはオプション終端 `--` の後に渡す。`--` が無いと、
+// `--exit-code=0` のような対象パスをgitleaksがオプションとして解釈し、
+// 挙動（この例では漏洩検出時の終了コード）が意図せず変わりうる。
 local gitleaksPreCommit = new Step {
     types = List("text")
     check = "gitleaks git --staged --redact --verbose --no-banner"
@@ -48,7 +56,7 @@ local gitleaksPreCommit = new Step {
 local gitleaksFullScan = new Step {
     types = List("text")
     check = #"""
-        gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -e "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner "$f"' _; }
+        gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -f "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner -- "$f"' _; }
         """#
 }
 
