@@ -27,6 +27,9 @@ local linters = new Mapping<String, Step> {
 // `-r`（`--no-run-if-empty`）は macOS 等の BSD 版 `xargs` に存在しないため使わない。
 // 代わりに `while read` ループで1ファイルずつ処理し、対象ファイルが0件なら
 // ループ自体が実行されないことで同じ効果（無引数呼び出しをしない）を得る。
+// `git ls-files --cached` は index 上のパスを列挙するため、作業ツリーから削除済み
+// （かつ未ステージ）のファイルも含まれる。存在しないパスを `gitleaks dir` に渡すと
+// エラー終了するため、ループ内で現存チェックしてスキップする。
 local gitleaksPreCommit = new Step {
     types = List("text")
     check = "gitleaks git --staged --redact --verbose --no-banner"
@@ -35,7 +38,7 @@ local gitleaksPreCommit = new Step {
 local gitleaksFullScan = new Step {
     types = List("text")
     check = #"""
-        gitleaks git --redact --verbose --no-banner && git ls-files --cached --others --exclude-standard | { status=0; while IFS= read -r f; do gitleaks dir --redact --verbose --no-banner "$f" || status=1; done; exit $status; }
+        gitleaks git --redact --verbose --no-banner && git ls-files --cached --others --exclude-standard | { status=0; while IFS= read -r f; do [ -e "$f" ] || continue; gitleaks dir --redact --verbose --no-banner "$f" || status=1; done; exit $status; }
         """#
 }
 
