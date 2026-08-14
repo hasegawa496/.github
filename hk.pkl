@@ -29,4 +29,16 @@ hooks {
             }
         }
     }
+    // post-merge だけでは、default branch がどの worktree でも checkout されていない
+    // 状態で local main の ref だけを直接更新する運用（例: git-cleanup.sh の
+    // sync_default_branch が `git update-ref` にフォールバックするケース）を取りこぼす。
+    // git update-ref はフックを経由しないため、その後 `git switch main` 等で checkout
+    // し直した時点の post-checkout で改めて hk/Shared.pkl の差分を確認する。
+    ["post-checkout"] {
+        steps {
+            ["clear_hk_cache"] {
+                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+            }
+        }
+    }
 }
