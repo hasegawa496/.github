@@ -13,6 +13,16 @@ hooks {
                 )
                 check = "scripts/check-workflow-templates.sh"
             }
+            // post-merge/post-checkout フックは、既存クローンに以前の `hk install` で
+            // 作られた git hook shim が無いと発火しない。新しい hook 種別を hk.pkl に
+            // 追加しても、既存クローン側で `hk install` を再実行しない限り shim は
+            // 増えないため、まさにキャッシュを自動クリアしたい既存環境で機能しない。
+            // pre-commit の shim は既存クローンに既に入っているため、ここで
+            // `hk install` を毎回実行して shim 一式を追従させ、次のコミット以降は
+            // post-merge/post-checkout が確実に発火する状態を自己修復する。
+            ["ensure_hk_hooks_installed"] {
+                check = "hk install --mise >/dev/null 2>&1 || true"
+            }
         }
     }
     // hk/Shared.pkl は各管理対象リポジトリの hk.pkl から amends されるが、
