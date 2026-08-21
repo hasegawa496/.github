@@ -6,6 +6,15 @@ local linters = new Mapping<String, Step> {
     ["check_added_large_files"] = Builtins.check_added_large_files
     ["check_merge_conflict"] = Builtins.check_merge_conflict
     ["detect_private_key"] = Builtins.detect_private_key
+    // MD013（行長制限）はデフォルト有効だが、rumdl check --fix / rumdl fmt の
+    // どちらでも自動修正されず、行折り返しをしていない既存のプロース中心の
+    // Markdown資産（AGENTS.md・ADR等）を組織全体で継続的にcheck失敗させる。
+    // Builtins.rumdl の glob・テストはそのまま流用し、コマンドにのみ
+    // --disable MD013 を追加する。
+    ["rumdl"] = (Builtins.rumdl) {
+        check_diff = "rumdl check --disable MD013 --diff {{ files }}"
+        fix = "rumdl check --disable MD013 --fix {{ files }}"
+    }
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
