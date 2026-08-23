@@ -18,7 +18,19 @@ local linters = new Mapping<String, Step> {
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
-    ["yamllint"] = Builtins.yamllint
+    // line-length（既定80文字）とdocument-start（`---`必須）は、GitHub Actions
+    // ワークフローやdependabot.yml等の既存YAML資産を組織全体で継続的にcheck失敗
+    // させるスタイル規則のため無効化する。truthyはGitHub Actionsの`on:`キー等、
+    // GitHub自身が推奨する記法と衝突するキー側の検査のみをcheck-keys: falseで
+    // 無効化し、`enabled: yes`のような値側の誤字検知は維持する
+    // （yamllint 1.38.0でcheck-keysオプション利用可）。
+    // Builtins.yamllint のglob・--strictはそのまま流用し、コマンドにのみ
+    // -d インライン設定を追加する。
+    ["yamllint"] = (Builtins.yamllint) {
+        check = #"""
+            yamllint --strict -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" {{ files }}
+            """#
+    }
 }
 
 // Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
