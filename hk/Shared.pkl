@@ -3,7 +3,23 @@ import "package://github.com/jdx/hk/releases/download/v1.54.0/hk@1.54.0#/Builtin
 
 local linters = new Mapping<String, Step> {
     ["actionlint"] = Builtins.actionlint
-    ["check_added_large_files"] = Builtins.check_added_large_files
+    // Builtins.check_added_large_files は既定 500KB 超のステージ済みファイルを
+    // 一律で弾くが、diff の大きさではなく最終的なファイルサイズを見ているため、
+    // 新規追加かどうかに関わらず既存ファイルの通常の更新（依存追加による
+    // package-lock.json の更新等）でも継続的に失敗する。生成物として肥大化する
+    // ロックファイル群はこのチェックの対象外にする。
+    ["check_added_large_files"] = (Builtins.check_added_large_files) {
+        exclude = List(
+            "**/package-lock.json",
+            "**/yarn.lock",
+            "**/pnpm-lock.yaml",
+            "**/Cargo.lock",
+            "**/poetry.lock",
+            "**/uv.lock",
+            "**/composer.lock",
+            "**/Gemfile.lock",
+        )
+    }
     ["check_merge_conflict"] = Builtins.check_merge_conflict
     ["detect_private_key"] = Builtins.detect_private_key
     // MD013（行長制限）はデフォルト有効だが、rumdl check --fix / rumdl fmt の
