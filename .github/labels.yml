@@ -40,6 +40,10 @@
   color: "bfd4f2"
   description: "依存先の open Issue などがあり、patrol では今は後回しにする"
 
+- name: patrol-manual-recovery
+  color: "d4c5f9"
+  description: "要手作業のため patrol-deferred の自動解除をしない"
+
 # risk ラベル
 - name: risk-high
   color: "e11d48"
