@@ -3,6 +3,11 @@
 # 参照元:
 #   - hasegawa496/.github/.github/workflows/label-sync-reusable.yml（ラベル同期ワークフロー）
 #
+# 同期は未定義ラベルを削除する strict 運用のため、残したいラベルはすべてここへ定義します。
+# このファイルの変更をマージしたら、hasegawa496/repo-ops で `scripts/repos apply` を実行して
+# 全管理対象 repo へ反映してください（自動では反映されません。手順は repo-ops の
+# docs/operations-runbook.md「ラベル定義を変更するとき」を参照）。
+#
 # type ラベルの管理対象は .github/type-labels.txt で定義します。
 # status ラベルは固定運用（Issue テンプレートとは無関係）です。
 
@@ -61,3 +66,16 @@
 - name: revisit-later
   color: "d4c5f9"
   description: "将来再検討。一旦クローズ"
+
+# dependabot ラベル（Dependabot が PR 作成時に自動生成する。削除すると毎回作り直されるため定義に含める）
+- name: dependencies
+  color: "0366d6"
+  description: "Pull requests that update a dependency file"
+
+- name: javascript
+  color: "168700"
+  description: "Pull requests that update javascript code"
+
+- name: github_actions
+  color: "000000"
+  description: "Pull requests that update GitHub Actions code"
