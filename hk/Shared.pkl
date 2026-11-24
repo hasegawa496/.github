@@ -45,13 +45,16 @@ local linters = new Mapping<String, Step> {
     // MD013（行長制限）はデフォルト有効だが、rumdl check --fix / rumdl fmt の
     // どちらでも自動修正されず、行折り返しをしていない既存のプロース中心の
     // Markdown資産（AGENTS.md・ADR等）を組織全体で継続的にcheck失敗させる。
+    // MD076（リスト項目間の空行の統一）も無効化する。rumdl 0.3.5 以降、項目の中に空行で区切った
+    // ブロック（コードブロック等）を持つリストは全項目の間に空行を求めるようになり、見た目の揃えだけの
+    // ために既存のリストを組織全体で書き換えることになるため。
     // MD033（インライン HTML 禁止）は、テーブルのセル内の改行に使う `<br>` だけを許可する。
     // Markdown のテーブルにはセル内改行の記法が無く、`<br>` が唯一の手段のため。
     // Builtins.rumdl の glob・テストはそのまま流用し、コマンドにのみ
-    // --disable MD013 と MD033 の許可要素を追加する。
+    // --disable MD013,MD076 と MD033 の許可要素を追加する。
     ["rumdl"] = (Builtins.rumdl) {
-        check_diff = #"rumdl check --disable MD013 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
-        fix = #"rumdl check --disable MD013 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
+        check_diff = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
+        fix = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
     }
     ["shellcheck"] = Builtins.shellcheck
     ["shfmt"] = Builtins.shfmt
