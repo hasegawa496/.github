@@ -19,7 +19,8 @@
 - 配布テンプレート
   - `templates/.github/**`
 - hk 共通フック設定
-  - `hk/Shared.pkl`
+  - `hk/Shared.pkl`（hk 1.x 用。全リポジトリが `Shared-v2.pkl` へ切り替わったら削除する）
+  - `hk/Shared-v2.pkl`（hk 2.x 用）
   - 配布専用のベースモジュール。`templates/.github/**` のように配布先へコピーされるのではなく、各管理対象リポジトリの `hk.pkl` から `amends` でリモート参照される
   - `main` へのマージが即座に全リポジトリへ波及するため、内容は言語非依存の共通ルールに限定する
 - 自己利用の同期・検証スクリプト

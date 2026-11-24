@@ -1,0 +1,176 @@
+amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+    // jactionlint の既定プロファイルは security・policy 規則を含む。次の規則は配布テンプレートの
+    // 設計と衝突するか方針の変更を伴うため、共通で無視する（hasegawa496/repo-ops の Issue #330）。
+    //   unpinned-uses: 再利用 workflow の呼び出しは ADR 0001 で @main 固定、Action の版は Dependabot が追従する。
+    //   dangerous-triggers: Dependabot Auto-merge が workflow_run を使う設計。
+    //   excessive-permissions: 呼び出し側 workflow が再利用 workflow へ権限を渡す必要がある。
+    //   concurrency-limits・missing-timeout・dependabot-cooldown: 方針の変更を伴う。テンプレートを見直すまで無視する。
+    // 個別のリポジトリの指摘は直すか、jactionlint の ignore コメントに理由を書く。
+    ["jactionlint"] = (Builtins.jactionlint) {
+        check { command { argv = List("jactionlint", "--format", "gcc", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
+        check_diff { command { argv = List("hk", "util", "sarif-diff", "--", "jactionlint", "--format", "sarif", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
+        fix { command { argv = List("jactionlint", "--fix", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
+    }
+    // Builtins.check_added_large_files は既定 500KB 超のステージ済みファイルを
+    // 一律で弾くが、diff の大きさではなく最終的なファイルサイズを見ているため、
+    // 新規追加かどうかに関わらず既存ファイルの通常の更新（依存追加による
+    // package-lock.json の更新等）でも継続的に失敗する。生成物として肥大化する
+    // ロックファイル群はこのチェックの対象外にする。
+    ["check_added_large_files"] = (Builtins.check_added_large_files) {
+        exclude = List(
+            "**/package-lock.json",
+            "**/yarn.lock",
+            "**/pnpm-lock.yaml",
+            "**/Cargo.lock",
+            "**/poetry.lock",
+            "**/uv.lock",
+            "**/composer.lock",
+            "**/Gemfile.lock",
+        )
+    }
+    ["check_merge_conflict"] = Builtins.check_merge_conflict
+    // Markdown / YAML の整形は Biome に統一する（hasegawa496/repo-ops の Issue #343）。
+    // lint は rumdl・yamllint が持ち続けるため、Biome の lint が走る `biome check` ではなく
+    // `biome format` を使う。Builtins.biome は JS/TS/JSON も対象にするが、それらの整形・lint
+    // 方針はリポジトリごとの biome.json と npm スクリプトに任せ、ここでは MD/YAML に限る。
+    // Biome 2.6.8 の Markdown 整形は frontmatter のネストした YAML（`metadata:` 配下など）の
+    // インデントを消して壊すため、先頭行が `---` の Markdown は対象から外す。
+    // 対象が0件のときに引数なしで呼ぶと作業ツリー全体を整形してしまうため、件数を確認する。
+    // 整形の設定は rumdl・yamllint と同じくコマンドのオプションで渡し、各リポジトリに
+    // biome.json を置かなくても同じ結果にする（Biome の既定のタブではなくスペース）。
+    // hk は Git 管理下のファイルだけを渡すため、.gitignore の参照は要らない。
+    // リポジトリに biome.json があれば、ここで渡していない設定（除外など）はそちらが効く。
+    ["biome_format"] = new Step {
+        glob = List("**/*.md", "**/*.yml", "**/*.yaml")
+        check = #"""
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --indent-style=space "$@"
+            """#
+        fix = #"""
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --indent-style=space --write "$@"
+            """#
+    }
+    ["detect_private_key"] = Builtins.detect_private_key
+    // MD013（行長制限）はデフォルト有効だが、rumdl check --fix / rumdl fmt の
+    // どちらでも自動修正されず、行折り返しをしていない既存のプロース中心の
+    // Markdown資産（AGENTS.md・ADR等）を組織全体で継続的にcheck失敗させる。
+    // MD076（リスト項目間の空行の統一）も無効化する。rumdl 0.3.5 以降、項目の中に空行で区切った
+    // ブロック（コードブロック等）を持つリストは全項目の間に空行を求めるようになり、見た目の揃えだけの
+    // ために既存のリストを組織全体で書き換えることになるため。
+    // MD033（インライン HTML 禁止）は、テーブルのセル内の改行に使う `<br>` だけを許可する。
+    // Markdown のテーブルにはセル内改行の記法が無く、`<br>` が唯一の手段のため。
+    // Builtins.rumdl の glob・テストはそのまま流用し、check・check_diff・fix のコマンドにのみ
+    // --disable MD013,MD076 と MD033 の許可要素を追加する。
+    ["rumdl"] = (Builtins.rumdl) {
+        check = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' {{ files }}"#
+        check_diff = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
+        fix = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
+    }
+    ["shellcheck"] = Builtins.shellcheck
+    ["shfmt"] = Builtins.shfmt
+    ["typos"] = Builtins.typos
+    // line-length（既定80文字）とdocument-start（`---`必須）は、GitHub Actions
+    // ワークフローやdependabot.yml等の既存YAML資産を組織全体で継続的にcheck失敗
+    // させるスタイル規則のため無効化する。truthyはGitHub Actionsの`on:`キー等、
+    // GitHub自身が推奨する記法と衝突するキー側の検査のみをcheck-keys: falseで
+    // 無効化し、`enabled: yes`のような値側の誤字検知は維持する
+    // （yamllint 1.38.0でcheck-keysオプション利用可）。
+    // comments.min-spaces-from-content（既定2）は、Biome 2.6 の YAML 整形が
+    // インラインコメント前を半角1スペースに統一するため、1へ緩める。整形は
+    // Biome に任せ、yamllint は他の規則の検査を続ける。
+    // Builtins.yamllint のglob・--strictはそのまま流用し、コマンドにのみ
+    // -d インライン設定を追加する。
+    ["yamllint"] = (Builtins.yamllint) {
+        check = #"""
+            yamllint --strict -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}, comments: {min-spaces-from-content: 1}}}" {{ files }}
+            """#
+    }
+}
+
+// Builtins.gitleaks は `gitleaks dir --redact --verbose --no-banner {{ files }}` を使うが、
+// `gitleaks dir` はディレクトリ引数を1つしか受け付けない。対象ファイルが複数あると
+// hk が {{ files }} に複数パスを展開してしまい、意図せずリポジトリ全体（.gitignore対象を含む）
+// を走査して無関係な既存ファイルの誤検知を大量に出す。
+// pre-commit はステージ済み差分だけを見れば十分なので `git --staged` を使う。
+// `check`/`fix` は次の2系統を両方満たす必要がある。
+//   1. 過去にコミット済みの漏洩（`gitleaks git`、コミット履歴を対象）
+//   2. 作業ツリー上の未コミット・未追跡ファイルの漏洩（コミット履歴には現れない）
+// 2 を `gitleaks dir` 1回で行うと元の複数引数バグに戻るため、`git ls-files` で
+// 対象ファイル（追跡済み + 追跡対象外だが .gitignore 対象でもないファイル）を列挙し、
+// ファイルごとに `gitleaks dir` を1引数で呼び出す。
+// hk のデフォルトシェルは `sh -o errexit -c`（POSIX sh）であり、GNU 版 `xargs` 固有の
+// `-r`（`--no-run-if-empty`）は macOS 等の BSD 版 `xargs` に存在しないため使わない。
+// 代わりに `while read` ループで1ファイルずつ処理し、対象ファイルが0件なら
+// ループ自体が実行されないことで同じ効果（無引数呼び出しをしない）を得る。
+// `git ls-files --cached` は index 上のパスを列挙するため、作業ツリーから削除済み
+// （かつ未ステージ）のファイルも含まれる。存在しないパスを `gitleaks dir` に渡すと
+// エラー終了するため、ループ内で現存チェックしてスキップする。
+// `git ls-files` は core.quotePath（既定 true）により、日本語等の非ASCII文字を含む
+// パスを `"\346..."` のような引用符付き8進エスケープで出力するため、`-z`（NUL区切り、
+// 常に非エスケープの生パスを出力）を使う。NUL区切りを改行区切りへ変換すると、
+// 万一パス自体に改行が含まれる場合に同じ問題が再発するため変換しない。
+// `xargs -0` はNULを直接扱え、かつ `-r`（`--no-run-if-empty`）と異なりGNU/BSD双方の
+// 実装にあるため使う。`xargs -0 -n1 -- sh -c '...' _` の形で1パスずつ実引数として
+// 渡す（`-I` によるテキスト置換はパス中の引用符等でコマンドが壊れうるため使わない）。
+// 空入力時に無引数実行しないためのガードは、対象ファイルの有無を
+// （キューティング有無に関わらず出力が空かどうかだけを見る）非NULモードの
+// `git ls-files` で判定してから、実際の走査だけを `-z` 経路で行う。
+// `[ -e ]` ではなく `[ -f ]` で現存チェックする。`git ls-files --cached` は
+// submodule の gitlink パス（index mode 160000）も列挙し、そのパスは作業ツリー上では
+// ディレクトリとして存在する。`-e` は真になり、`gitleaks dir` にディレクトリを渡すと
+// そのsubmodule配下（親リポジトリの管理外）を丸ごと再帰走査してしまう。`-f` は通常
+// ファイルにしか真にならないため、submodule のディレクトリを自然に除外できる。
+// `gitleaks dir` へのパスはオプション終端 `--` の後に渡す。`--` が無いと、
+// `--exit-code=0` のような対象パスをgitleaksがオプションとして解釈し、
+// 挙動（この例では漏洩検出時の終了コード）が意図せず変わりうる。
+local gitleaksPreCommit = new Step {
+    types = List("text")
+    check = "gitleaks git --staged --redact --verbose --no-banner"
+}
+
+local gitleaksFullScan = new Step {
+    types = List("text")
+    check = #"""
+        gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -f "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner -- "$f"' _; }
+        """#
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksPreCommit
+        }
+    }
+    ["fix"] {
+        fix = true
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullScan
+        }
+    }
+    ["check"] {
+        steps {
+            for (name, step in linters) {
+                [name] = step
+            }
+            ["gitleaks"] = gitleaksFullScan
+        }
+    }
+    ["pre-push"] {
+        steps {
+            ["no_push_to_protected_branch"] = new Step {
+                stdin = "{{ hook_stdin }}"
+                check = "! awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
+            }
+        }
+    }
+}
