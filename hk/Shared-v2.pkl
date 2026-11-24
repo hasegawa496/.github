@@ -2,17 +2,16 @@ amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.
 import "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Builtins.pkl"
 
 local linters = new Mapping<String, Step> {
-    // jactionlint の既定プロファイルは security・policy 規則を含む。次の規則は配布テンプレートの
-    // 設計と衝突するか方針の変更を伴うため、共通で無視する（hasegawa496/repo-ops の Issue #330）。
-    //   unpinned-uses: 再利用 workflow の呼び出しは ADR 0001 で @main 固定、Action の版は Dependabot が追従する。
-    //   dangerous-triggers: Dependabot Auto-merge が workflow_run を使う設計。
-    //   excessive-permissions: 呼び出し側 workflow が再利用 workflow へ権限を渡す必要がある。
-    //   concurrency-limits・missing-timeout・dependabot-cooldown: 方針の変更を伴う。テンプレートを見直すまで無視する。
-    // 個別のリポジトリの指摘は直すか、jactionlint の ignore コメントに理由を書く。
+    // jactionlint の既定プロファイルは security・policy 規則を含む。unpinned-uses だけを共通で無視する。
+    //   unpinned-uses: 再利用 workflow の呼び出しは ADR 0001 で @main 固定とし、Action の版は
+    //   Dependabot が追従する設計のため、SHA 固定は行わない（hasegawa496/repo-ops の Issue #330・#353）。
+    // 他の規則は配布テンプレートを直して解消済みである。dependabot-automerge.yml の workflow_run
+    // （dangerous-triggers）だけは設計上必要なので、テンプレート側で理由付きの個別無視を置いている。
+    // 個別のリポジトリの指摘は直すか、`# jactionlint ignore=<規則>` コメントの直前に理由を書く。
     ["jactionlint"] = (Builtins.jactionlint) {
-        check { command { argv = List("jactionlint", "--format", "gcc", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
-        check_diff { command { argv = List("hk", "util", "sarif-diff", "--", "jactionlint", "--format", "sarif", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
-        fix { command { argv = List("jactionlint", "--fix", "--ignore", "unpinned-uses", "--ignore", "dangerous-triggers", "--ignore", "excessive-permissions", "--ignore", "concurrency-limits", "--ignore", "missing-timeout", "--ignore", "dependabot-cooldown", "{{files}}") } }
+        check { command { argv = List("jactionlint", "--format", "gcc", "--ignore", "unpinned-uses", "{{files}}") } }
+        check_diff { command { argv = List("hk", "util", "sarif-diff", "--", "jactionlint", "--format", "sarif", "--ignore", "unpinned-uses", "{{files}}") } }
+        fix { command { argv = List("jactionlint", "--fix", "--ignore", "unpinned-uses", "{{files}}") } }
     }
     // Builtins.check_added_large_files は既定 500KB 超のステージ済みファイルを
     // 一律で弾くが、diff の大きさではなく最終的なファイルサイズを見ているため、
