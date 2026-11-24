@@ -49,6 +49,7 @@ jobs:
           SELF_RUN_ID: ${{ github.run_id }}
           SELF_WORKFLOW: ${{ github.workflow }}
         run: |
+          set -o pipefail
           # 課金はジョブ全体の実時間を分に切り上げて行われる。待機ループだけを基準に
           # すると、ここから待機開始までにかかった時間が上乗せされて1分を超えるため、
           # ステップ先頭を起点にして打ち切り時刻を決める。
