@@ -17,12 +17,18 @@ on:
     # 何も変わらないまま1分課金されるだけである。
     types: [opened, edited]
 
-permissions:
-  contents: read
-  issues: write
+# 権限はジョブ側で付与する。後から足したジョブへ権限が暗黙に渡らないようにするため。
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-caller-${{ github.event.issue.number }}
+  cancel-in-progress: true
 
 jobs:
   triage:
+    permissions:
+      contents: read
+      issues: write
     uses: hasegawa496/.github/.github/workflows/triage-reusable.yml@main
     with:
       project_number: 12

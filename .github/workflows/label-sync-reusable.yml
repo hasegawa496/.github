@@ -11,15 +11,17 @@ name: Label Sync (Reusable)
 on:
   workflow_call:
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 jobs:
   sync:
+    permissions:
+      contents: read
+      issues: write
     # checkout と JS action しか使わず数秒で終わるため、低コストな ubuntu-slim を使う
     # （private repo での超過分の単価が $0.006/分 から $0.002/分 になる）
     runs-on: ubuntu-slim
+    timeout-minutes: 5
     steps:
       - name: Checkout .github repository
         uses: actions/checkout@v7

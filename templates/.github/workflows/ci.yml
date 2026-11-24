@@ -17,11 +17,17 @@ on:
 permissions:
   contents: read
 
+# 同じ PR の古い実行を、新しい push の実行で置き換える。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     # 軽量ジョブのため ubuntu-slim を使用。
     # 実行時間が継続的に 1 分を超える場合は ubuntu-latest への変更を検討する。
     runs-on: ubuntu-slim
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: hasegawa496/.github/actions/shellcheck@main

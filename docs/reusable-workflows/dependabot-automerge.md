@@ -32,7 +32,7 @@ Dependabot が作成した PR を、head SHA 上のすべてのチェックが�
 
 ## 運用ノート（権限追加時の再配布）
 
-Reusable Workflow が要求する権限（`actions: read` / `checks: read` / `statuses: read` など）を追加した場合、GITHUB_TOKEN の権限は呼び出し元テンプレート側の `permissions:` 宣言で決まり、Reusable Workflow 側では昇格できない。そのため、この権限追加は次の順で反映する。
+Reusable Workflow が要求する権限（`actions: read` / `checks: read` / `statuses: read` など）を追加した場合、GITHUB_TOKEN の権限は呼び出し元テンプレートのジョブ側の `permissions:` 宣言で決まり、Reusable Workflow 側では昇格できない。そのため、この権限追加は次の順で反映する。
 
 1. `templates/.github/workflows/dependabot-automerge.yml` の権限を更新する。
 2. マージ後、速やかに `repos apply` で全配布先の呼び出し側を再配布する。

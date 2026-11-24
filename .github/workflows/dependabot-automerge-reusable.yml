@@ -22,15 +22,16 @@ name: Dependabot Auto-merge (Reusable)
 on:
   workflow_call:
 
-permissions:
-  contents: write
-  pull-requests: write
-  actions: read
-  checks: read
-  statuses: read
+permissions: {}
 
 jobs:
   automerge:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+      checks: read
+      statuses: read
     # gh と jq しか使わないため低コストな ubuntu-slim を使う
     # （ubuntu-slim のジョブ実行上限は15分。下記の待機上限はそれを大きく下回る）
     runs-on: ubuntu-slim

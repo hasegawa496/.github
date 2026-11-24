@@ -13,17 +13,27 @@
 name: Dependabot Auto-merge
 
 on:
+  # dangerous-triggers の無視理由: CI 完了を契機にマージ可否を判定する設計である（ADR 0003）。
+  # 受け取るのは head SHA だけで、fork が作る成果物やイベント本文の内容は信用して使わない。
+  # jactionlint ignore=dangerous-triggers
   workflow_run:
     workflows: ["CI"]
     types: [completed]
 
-permissions:
-  contents: write
-  pull-requests: write
-  actions: read
-  checks: read
-  statuses: read
+# 権限はジョブ側で付与する。
+permissions: {}
+
+# 同じブランチで CI が続けて完了したときは、新しい実行だけが判定する。
+concurrency:
+  group: ${{ github.workflow }}-caller-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
 
 jobs:
   automerge:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+      checks: read
+      statuses: read
     uses: hasegawa496/.github/.github/workflows/dependabot-automerge-reusable.yml@main
