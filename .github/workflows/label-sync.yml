@@ -12,7 +12,7 @@
 name: Label Sync
 
 on:
-  workflow_dispatch:  # 手動実行
+  workflow_dispatch: # 手動実行
 
 permissions:
   contents: read

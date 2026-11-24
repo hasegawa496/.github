@@ -22,14 +22,14 @@ GitHub Actions の課金は**ジョブ単位で 1 分未満を切り上げる**�
 
 PR への push 1 回あたりの現状は次のとおりである。
 
-| リポジトリ | 現状のジョブ構成（PR 時） | ジョブ数 |
-| --- | --- | --- |
-| visual-caret-move | ダミー CI + Test（lint / test） + ShellCheck | 4 |
-| dilemma-procyon | ダミー CI + PR タイトル検証 + PR ビルド検証 + ShellCheck | 3〜4 |
-| secure-sync | ダミー CI + Rust CI + ShellCheck | 3 |
-| air-innovate-site | CI（quality / bun-compat） + ShellCheck | 3 |
-| ai-tools-knowledge / bright-moon-shingetsu / bright-moon-site / headless_cms / misa-player / dotclaude / repo-ops | CI + ShellCheck | 2 |
-| ai-chat-platform / ai-quota-hud / dev-env-setup / my-life / win-dev-bootstrap | ダミー CI + ShellCheck | 2 |
+| リポジトリ                                                                                                        | 現状のジョブ構成（PR 時）                                | ジョブ数 |
+| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------- |
+| visual-caret-move                                                                                                 | ダミー CI + Test（lint / test） + ShellCheck             | 4        |
+| dilemma-procyon                                                                                                   | ダミー CI + PR タイトル検証 + PR ビルド検証 + ShellCheck | 3〜4     |
+| secure-sync                                                                                                       | ダミー CI + Rust CI + ShellCheck                         | 3        |
+| air-innovate-site                                                                                                 | CI（quality / bun-compat） + ShellCheck                  | 3        |
+| ai-tools-knowledge / bright-moon-shingetsu / bright-moon-site / headless_cms / misa-player / dotclaude / repo-ops | CI + ShellCheck                                          | 2        |
+| ai-chat-platform / ai-quota-hud / dev-env-setup / my-life / win-dev-bootstrap                                     | ダミー CI + ShellCheck                                   | 2        |
 
 ## 決定
 
@@ -45,10 +45,10 @@ composite action は `steps.uses` で使うため呼び出し元ジョブの中�
 
 今後の追加時に同じ問題を繰り返さないため、使い分けの基準を定める。
 
-| 条件 | 手段 |
-| --- | --- |
+| 条件                                                               | 手段                 |
+| ------------------------------------------------------------------ | -------------------- |
 | CI と同じイベント（`pull_request`）で動き、CI のジョブに同居できる | **composite action** |
-| CI と別のイベントで動き、ジョブを共有できない | Reusable Workflow |
+| CI と別のイベントで動き、ジョブを共有できない                      | Reusable Workflow    |
 
 この基準により、Triage（`issues`）、Label Sync（`workflow_dispatch`）、Dependabot Auto-merge（`workflow_run`）は Reusable Workflow のまま維持する。これらは CI のジョブに同居できないため、統合しても本数は減らない。
 
@@ -79,10 +79,10 @@ CI は `pull_request` だけで発火させる。PR でグリーンだったコ�
 
 ADR 0001 の Reusable Workflow の規約に、composite action の規約を追加する。
 
-| 種別 | パス | 役割 |
-| --- | --- | --- |
+| 種別             | パス                          | 役割                                     |
+| ---------------- | ----------------------------- | ---------------------------------------- |
 | composite action | `actions/<用途名>/action.yml` | 呼び出し元ジョブの中でステップとして動く |
-| 個別仕様 | `docs/actions/<用途名>.md` | 目的、入力、前提を定義する |
+| 個別仕様         | `docs/actions/<用途名>.md`    | 目的、入力、前提を定義する               |
 
 `scripts/check-workflow-templates.sh` は、`actions/<用途名>/action.yml` に対応する `docs/actions/<用途名>.md` の存在も検証する。
 

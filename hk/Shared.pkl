@@ -21,6 +21,22 @@ local linters = new Mapping<String, Step> {
         )
     }
     ["check_merge_conflict"] = Builtins.check_merge_conflict
+    // Markdown / YAML の整形は Biome に統一する（hasegawa496/repo-ops の Issue #343）。
+    // lint は rumdl・yamllint が持ち続けるため、Biome の lint が走る `biome check` ではなく
+    // `biome format` を使う。Builtins.biome は JS/TS/JSON も対象にするが、それらの整形・lint
+    // 方針はリポジトリごとの biome.json と npm スクリプトに任せ、ここでは MD/YAML に限る。
+    // Biome 2.6.8 の Markdown 整形は frontmatter のネストした YAML（`metadata:` 配下など）の
+    // インデントを消して壊すため、先頭行が `---` の Markdown は対象から外す。
+    // 対象が0件のときに引数なしで呼ぶと作業ツリー全体を整形してしまうため、件数を確認する。
+    ["biome_format"] = new Step {
+        glob = List("**/*.md", "**/*.yml", "**/*.yaml")
+        check = #"""
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched "$@"
+            """#
+        fix = #"""
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --write "$@"
+            """#
+    }
     ["detect_private_key"] = Builtins.detect_private_key
     // MD013（行長制限）はデフォルト有効だが、rumdl check --fix / rumdl fmt の
     // どちらでも自動修正されず、行折り返しをしていない既存のプロース中心の

@@ -10,14 +10,14 @@
 
 ## ファイル命名
 
-| 種別 | パス | 役割 |
-| --- | --- | --- |
-| Reusable Workflow | `.github/workflows/<用途名>-reusable.yml` | `on: workflow_call` を定義し、他リポジトリから呼び出される。 |
-| 配布テンプレート | `templates/.github/workflows/<用途名>.yml` | 配布先へコピーする呼び出し側の正本。 |
-| このリポジトリ用の呼び出し側 | `.github/workflows/<用途名>.yml` | 配布テンプレートから生成する。このリポジトリ自身ではローカル参照を使う。 |
-| 個別仕様 | `docs/reusable-workflows/<用途名>.md` | 目的、実行条件、入力、権限、失敗時の挙動を定義する。 |
-| composite action | `actions/<用途名>/action.yml` | CI のジョブの中でステップとして呼ばれる（[ADR 0003](adr/0003-consolidate-verification-into-single-job.md) 決定6）。 |
-| composite action の個別仕様 | `docs/actions/<用途名>.md` | composite action の目的、入力、前提を定義する。 |
+| 種別                         | パス                                       | 役割                                                                                                                |
+| ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Reusable Workflow            | `.github/workflows/<用途名>-reusable.yml`  | `on: workflow_call` を定義し、他リポジトリから呼び出される。                                                        |
+| 配布テンプレート             | `templates/.github/workflows/<用途名>.yml` | 配布先へコピーする呼び出し側の正本。                                                                                |
+| このリポジトリ用の呼び出し側 | `.github/workflows/<用途名>.yml`           | 配布テンプレートから生成する。このリポジトリ自身ではローカル参照を使う。                                            |
+| 個別仕様                     | `docs/reusable-workflows/<用途名>.md`      | 目的、実行条件、入力、権限、失敗時の挙動を定義する。                                                                |
+| composite action             | `actions/<用途名>/action.yml`              | CI のジョブの中でステップとして呼ばれる（[ADR 0003](adr/0003-consolidate-verification-into-single-job.md) 決定6）。 |
+| composite action の個別仕様  | `docs/actions/<用途名>.md`                 | composite action の目的、入力、前提を定義する。                                                                     |
 
 `<用途名>` は利用者が識別する機能名を kebab-case で表す。`-wc` のような略語は使わない。
 
@@ -56,10 +56,10 @@
 
 ADR 0003 により、共通化の手段は「ジョブを共有できるかどうか」で選びます。
 
-| 条件 | 手段 |
-| --- | --- |
-| CI と同じイベント（`pull_request`）で動き、CI のジョブに同居できる | composite action（`actions/<用途名>/action.yml`） |
-| CI と別のイベントで動き、ジョブを共有できない | Reusable Workflow（`.github/workflows/<用途名>-reusable.yml`） |
+| 条件                                                               | 手段                                                           |
+| ------------------------------------------------------------------ | -------------------------------------------------------------- |
+| CI と同じイベント（`pull_request`）で動き、CI のジョブに同居できる | composite action（`actions/<用途名>/action.yml`）              |
+| CI と別のイベントで動き、ジョブを共有できない                      | Reusable Workflow（`.github/workflows/<用途名>-reusable.yml`） |
 
 Reusable Workflow は `jobs.<job_id>.uses` で呼ぶため必ず独立したジョブになり、GitHub Actions の 1 分未満切り上げ課金がジョブごとに発生します。1 つのジョブに `uses` は 1 つしか書けず `steps` とも併用できないため、複数の Reusable Workflow を 1 ジョブへまとめることはできません。
 
