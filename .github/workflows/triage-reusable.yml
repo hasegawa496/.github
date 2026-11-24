@@ -78,7 +78,6 @@ jobs:
           }
 
           issue_json="$(GH_TOKEN="${GITHUB_TOKEN}" gh api "repos/${REPO}/issues/${ISSUE_NUMBER}")"
-          issue_title="$(jq -r '.title // ""' <<<"$issue_json")"
           issue_body="$(jq -r '.body // ""' <<<"$issue_json")"
           issue_url="$(jq -r '.html_url // ""' <<<"$issue_json")"
           issue_assignees="$(jq -r '[.assignees[].login] | join(",")' <<<"$issue_json")"
@@ -147,6 +146,8 @@ jobs:
             exit 0
           fi
 
+          # GraphQL の変数（$owner など）は shell で展開しない
+          # shellcheck disable=SC2016
           project_query='
             query($owner:String!, $number:Int!){
               user(login:$owner){
@@ -205,6 +206,8 @@ jobs:
             ' <<<"$project_obj" | head -n1
           }
 
+          # GraphQL の変数（$owner など）は shell で展開しない
+          # shellcheck disable=SC2016
           existing_item_query='
             query($contentId:ID!){
               node(id:$contentId){
@@ -222,6 +225,8 @@ jobs:
           item_id="$(jq -r --arg pid "$project_id" '.data.node.projectItems.nodes[]? | select(.project.id==$pid) | .id' <<<"$existing_items_json" | head -n1)"
 
           if [[ -z "${item_id:-}" ]]; then
+            # GraphQL の変数（$owner など）は shell で展開しない
+            # shellcheck disable=SC2016
             add_item_mutation='
               mutation($projectId:ID!, $contentId:ID!){
                 addProjectV2ItemById(input:{projectId:$projectId, contentId:$contentId}){
@@ -240,6 +245,8 @@ jobs:
           priority_field_id="$(field_id_by_name "${PRIORITY_FIELD_NAME}")"
           size_field_id="$(field_id_by_name "${SIZE_FIELD_NAME}")"
 
+          # GraphQL の変数（$owner など）は shell で展開しない
+          # shellcheck disable=SC2016
           update_mutation='
             mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!){
               updateProjectV2ItemFieldValue(input:{
