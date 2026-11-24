@@ -7,6 +7,9 @@ updates:
       day: "monday"
       time: "03:00"
       timezone: "Asia/Tokyo"
+    # 公開直後の版を取り込まないよう、公開から7日待つ。
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"

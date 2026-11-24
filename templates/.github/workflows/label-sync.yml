@@ -13,10 +13,12 @@ name: Label Sync
 on:
   workflow_dispatch: # 手動実行
 
-permissions:
-  contents: read
-  issues: write
+# 権限はジョブ側で付与する。後から足したジョブへ権限が暗黙に渡らないようにするため。
+permissions: {}
 
 jobs:
   sync:
+    permissions:
+      contents: read
+      issues: write
     uses: hasegawa496/.github/.github/workflows/label-sync-reusable.yml@main

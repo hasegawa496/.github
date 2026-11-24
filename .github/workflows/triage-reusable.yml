@@ -44,15 +44,17 @@ on:
         description: Projects v2 更新用トークン（PAT など）
         required: false
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 jobs:
   triage:
+    permissions:
+      contents: read
+      issues: write
     # gh と jq しか使わず数秒で終わるため、低コストな ubuntu-slim を使う
     # （private repo での超過分の単価が $0.006/分 から $0.002/分 になる）
     runs-on: ubuntu-slim
+    timeout-minutes: 5
     steps:
       - name: アサインし Project へ追加しフィールドを更新
         env:
