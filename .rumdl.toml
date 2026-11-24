@@ -1,0 +1,3 @@
+# PR テンプレートは見出しで始まらない（本文の見出しは `## 概要` から）ため MD041 を除外する。
+[per-file-ignores]
+".github/PULL_REQUEST_TEMPLATE.md" = ["MD041"]
