@@ -1,5 +1,5 @@
 [tools]
-hk = "1.54.0"
+hk = "2.13.0"
 
 [env]
 HK_MISE = 1
