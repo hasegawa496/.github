@@ -1,6 +1,6 @@
 amends "https://raw.githubusercontent.com/hasegawa496/.github/refs/heads/main/hk/Shared-v2.pkl"
 
-// Shared.pkl の共通 linter に加え、このリポジトリ固有の配布テンプレート整合性検証を追加する。
+// Shared-v2.pkl の共通 linter に加え、このリポジトリ固有の配布テンプレート整合性検証を追加する。
 hooks {
     ["pre-commit"] {
         steps {
@@ -25,17 +25,17 @@ hooks {
             }
         }
     }
-    // hk/Shared.pkl は各管理対象リポジトリの hk.pkl から amends されるが、
+    // hk/Shared-v2.pkl は各管理対象リポジトリの hk.pkl から amends されるが、
     // hk はリモート import を含む設定を ~/.cache/hk にキャッシュし、時間による失効が無い。
-    // このクローンで hk/Shared.pkl の変更を取り込む git merge（PR マージ後の git pull 等）が
-    // 起きたときにキャッシュを自動でクリアし、Shared.pkl 更新が反映されない事故を防ぐ。
+    // このクローンで hk/Shared-v2.pkl の変更を取り込む git merge（PR マージ後の git pull 等）が
+    // 起きたときにキャッシュを自動でクリアし、Shared-v2.pkl 更新が反映されない事故を防ぐ。
     // post-merge のステップは glob によるファイルフィルタがマージ差分ではなく作業ツリーの
     // 変更ファイルを見てしまい常に空集合になるため使えない。check コマンド側で
     // ORIG_HEAD..HEAD の差分を見て対象ファイルの有無を判定する。
     ["post-merge"] {
         steps {
             ["clear_hk_cache"] {
-                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qxE 'hk/Shared(-v2)?.pkl' && hk cache clear || true"
+                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qx 'hk/Shared-v2.pkl' && hk cache clear || true"
             }
         }
     }
@@ -43,11 +43,11 @@ hooks {
     // 状態で local main の ref だけを直接更新する運用（例: git-cleanup.sh の
     // sync_default_branch が `git update-ref` にフォールバックするケース）を取りこぼす。
     // git update-ref はフックを経由しないため、その後 `git switch main` 等で checkout
-    // し直した時点の post-checkout で改めて hk/Shared.pkl の差分を確認する。
+    // し直した時点の post-checkout で改めて hk/Shared-v2.pkl の差分を確認する。
     ["post-checkout"] {
         steps {
             ["clear_hk_cache"] {
-                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qxE 'hk/Shared(-v2)?.pkl' && hk cache clear || true"
+                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qx 'hk/Shared-v2.pkl' && hk cache clear || true"
             }
         }
     }

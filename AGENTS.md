@@ -25,7 +25,7 @@
 - `.github/workflows/*-reusable.yml`（Reusable Workflow）
 - `actions/*/action.yml`（composite action）
 - `templates/.github/**`（配布テンプレ）
-- `hk/Shared.pkl`・`hk/Shared-v2.pkl`（hk 共通フック設定。hk 1.x 用と 2.x 用。配布専用のベースモジュールで、各管理対象リポジトリの `hk.pkl` から `amends` でリモート参照される）
+- `hk/Shared-v2.pkl`（hk 共通フック設定。配布専用のベースモジュールで、各管理対象リポジトリの `hk.pkl` から `amends` でリモート参照される）
 - `scripts/sync-workflow-callers.sh` と `scripts/check-workflow-templates.sh`
 - `docs/github-workflow-operations.md`
 - `docs/reusable-workflows.md`
