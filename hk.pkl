@@ -35,7 +35,7 @@ hooks {
     ["post-merge"] {
         steps {
             ["clear_hk_cache"] {
-                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+                check = "git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qxE 'hk/Shared(-v2)?.pkl' && hk cache clear || true"
             }
         }
     }
@@ -47,7 +47,7 @@ hooks {
     ["post-checkout"] {
         steps {
             ["clear_hk_cache"] {
-                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qx 'hk/Shared.pkl' && hk cache clear || true"
+                check = "[ '{{ is_branch_checkout }}' = 'true' ] && git diff --name-only '{{ prev_head }}' '{{ new_head }}' 2>/dev/null | grep -qxE 'hk/Shared(-v2)?.pkl' && hk cache clear || true"
             }
         }
     }
