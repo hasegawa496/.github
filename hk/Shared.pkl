@@ -28,13 +28,17 @@ local linters = new Mapping<String, Step> {
     // Biome 2.6.8 の Markdown 整形は frontmatter のネストした YAML（`metadata:` 配下など）の
     // インデントを消して壊すため、先頭行が `---` の Markdown は対象から外す。
     // 対象が0件のときに引数なしで呼ぶと作業ツリー全体を整形してしまうため、件数を確認する。
+    // 整形の設定は rumdl・yamllint と同じくコマンドのオプションで渡し、各リポジトリに
+    // biome.json を置かなくても同じ結果にする（Biome の既定のタブではなくスペース）。
+    // hk は Git 管理下のファイルだけを渡すため、.gitignore の参照は要らない。
+    // リポジトリに biome.json があれば、ここで渡していない設定（除外など）はそちらが効く。
     ["biome_format"] = new Step {
         glob = List("**/*.md", "**/*.yml", "**/*.yaml")
         check = #"""
-            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched "$@"
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --indent-style=space "$@"
             """#
         fix = #"""
-            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --write "$@"
+            set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --indent-style=space --write "$@"
             """#
     }
     ["detect_private_key"] = Builtins.detect_private_key
