@@ -61,9 +61,12 @@ local linters = new Mapping<String, Step> {
     // ために既存のリストを組織全体で書き換えることになるため。
     // MD033（インライン HTML 禁止）は、テーブルのセル内の改行に使う `<br>` だけを許可する。
     // Markdown のテーブルにはセル内改行の記法が無く、`<br>` が唯一の手段のため。
+    // `.claude/CLAUDE.md` は `repos apply` が配る `@../AGENTS.md` の1行だけのファイルで、
+    // 見出しが無く MD041 に違反するため対象から外す（MD041 自体は組織全体で有効のまま）。
     // Builtins.rumdl の glob・テストはそのまま流用し、check・check_diff・fix のコマンドにのみ
     // --disable MD013,MD076 と MD033 の許可要素を追加する。
     ["rumdl"] = (Builtins.rumdl) {
+        exclude = List(".claude/CLAUDE.md")
         check = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' {{ files }}"#
         check_diff = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
         fix = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
