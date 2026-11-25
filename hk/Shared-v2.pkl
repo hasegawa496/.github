@@ -17,7 +17,8 @@ local linters = new Mapping<String, Step> {
     // 一律で弾くが、diff の大きさではなく最終的なファイルサイズを見ているため、
     // 新規追加かどうかに関わらず既存ファイルの通常の更新（依存追加による
     // package-lock.json の更新等）でも継続的に失敗する。生成物として肥大化する
-    // ロックファイル群はこのチェックの対象外にする。
+    // ロックファイル群はこのチェックの対象外にする。画像も意図して置くもので、
+    // 500KB の上限は誤検知になるため対象外にする。
     ["check_added_large_files"] = (Builtins.check_added_large_files) {
         exclude = List(
             "**/package-lock.json",
@@ -28,6 +29,11 @@ local linters = new Mapping<String, Step> {
             "**/uv.lock",
             "**/composer.lock",
             "**/Gemfile.lock",
+            "**/*.png",
+            "**/*.jpg",
+            "**/*.jpeg",
+            "**/*.webp",
+            "**/*.gif",
         )
     }
     ["check_merge_conflict"] = Builtins.check_merge_conflict
@@ -60,17 +66,21 @@ local linters = new Mapping<String, Step> {
     // ために既存のリストを組織全体で書き換えることになるため。
     // MD033（インライン HTML 禁止）は、テーブルのセル内の改行に使う `<br>` だけを許可する。
     // Markdown のテーブルにはセル内改行の記法が無く、`<br>` が唯一の手段のため。
-    // `.claude/CLAUDE.md` は `repos apply` が配る `@../AGENTS.md` の1行だけのファイルで、
-    // 見出しが無く MD041 に違反するため対象から外す（MD041 自体は組織全体で有効のまま）。
+    // MD041（先頭行が見出し）も無効化する。`.claude/CLAUDE.md` の import 行、PR テンプレート、
+    // AGENTS.md の断片、タグで始まる Skill など配布物で例外が続き、例外の管理が規則の価値を上回るため。
     // Builtins.rumdl の glob・テストはそのまま流用し、check・check_diff・fix のコマンドにのみ
-    // --disable MD013,MD076 と MD033 の許可要素を追加する。
+    // --disable MD013,MD076,MD041 と MD033 の許可要素を追加する。
     ["rumdl"] = (Builtins.rumdl) {
-        exclude = List(".claude/CLAUDE.md")
-        check = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' {{ files }}"#
-        check_diff = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
-        fix = #"rumdl check --disable MD013,MD076 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
+        check = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' {{ files }}"#
+        check_diff = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
+        fix = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
     }
-    ["shellcheck"] = Builtins.shellcheck
+    // `-x` は `source` 先のファイルを追跡する。hk は対象ファイルを分けて渡すため、
+    // 付けないと source 元で使う変数が SC2034 などの誤検知になる。
+    ["shellcheck"] = (Builtins.shellcheck) {
+        check { command { argv = List("shellcheck", "-x", "{{files}}") } }
+        check_diff { command { argv = List("shellcheck", "-x", "--format=diff", "{{files}}") } }
+    }
     ["shfmt"] = Builtins.shfmt
     ["typos"] = Builtins.typos
     // line-length（既定80文字）とdocument-start（`---`必須）は、GitHub Actions
