@@ -37,7 +37,7 @@
 2. Reusable Workflow と配布テンプレートを変更する。
 3. `scripts/sync-workflow-callers.sh --write` でこのリポジトリ用の呼び出し側を同期する。
 4. `scripts/check-workflow-templates.sh` と対象 Workflow に対応する検証を実行する。
-5. `repo-ops` の `apply` で配布する。既存の `CI` は保持し、存在しない場合は標準 `CI`（checkout と ShellCheck composite action）を配置する。
+5. `repo-ops` の `apply` で配布する。既存の `CI` に hk を追加し、存在しない場合は標準 `CI` を配置する。
 
 ## 提供する Workflow
 
@@ -49,6 +49,7 @@
 ## 提供する composite action
 
 - [ShellCheck](actions/shellcheck.md)
+- [hk チェック](actions/hk-check.md)
 
 設計判断の経緯は [ADR 0001](adr/0001-reusable-workflow-reference-and-naming.md)、[ADR 0002](adr/0002-template-distribution-and-ci-name.md)、[ADR 0003](adr/0003-consolidate-verification-into-single-job.md) を参照します。
 
