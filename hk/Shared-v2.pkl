@@ -1,6 +1,12 @@
 amends "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v2.13.0/hk@2.13.0#/Builtins.pkl"
 
+// Windows の hk は、`shell` を指定しない文字列コマンドを cmd.exe で実行する。POSIX sh の構文や
+// 引用符を使うステップ（組み込みの shfmt・typos を含む）には sh を指定する。値は Linux・macOS の
+// 既定と同じである。Windows では Git for Windows の `Git\bin` を PATH に置いて sh を解決する
+// （hasegawa496/machine-setup-windows の bootstrap.ps1 が追加する）。argv 形式のコマンドには指定できない。
+local posixShell = "sh -o errexit -c"
+
 local linters = new Mapping<String, Step> {
     // jactionlint の既定プロファイルは security・policy 規則を含む。unpinned-uses だけを共通で無視する。
     //   unpinned-uses: 再利用 workflow の呼び出しは ADR 0001 で @main 固定とし、Action の版は
@@ -49,6 +55,7 @@ local linters = new Mapping<String, Step> {
     // hk は Git 管理下のファイルだけを渡すため、.gitignore の参照は要らない。
     // リポジトリに biome.json があれば、ここで渡していない設定（除外など）はそちらが効く。
     ["biome_format"] = new Step {
+        shell = posixShell
         glob = List("**/*.md", "**/*.yml", "**/*.yaml")
         check = #"""
             set --; for f in {{ files }}; do case "$f" in *.md) [ "$(head -n 1 "$f")" = "---" ] && continue;; esac; set -- "$@" "$f"; done; [ $# -eq 0 ] || biome format --no-errors-on-unmatched --indent-style=space "$@"
@@ -71,6 +78,7 @@ local linters = new Mapping<String, Step> {
     // Builtins.rumdl の glob・テストはそのまま流用し、check・check_diff・fix のコマンドにのみ
     // --disable MD013,MD076,MD041 と MD033 の許可要素を追加する。
     ["rumdl"] = (Builtins.rumdl) {
+        shell = posixShell
         check = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' {{ files }}"#
         check_diff = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' --diff {{ files }}"#
         fix = #"rumdl check --disable MD013,MD076,MD041 --config 'MD033.allowed-elements = ["br"]' --fix {{ files }}"#
@@ -81,8 +89,8 @@ local linters = new Mapping<String, Step> {
         check { command { argv = List("shellcheck", "-x", "{{files}}") } }
         check_diff { command { argv = List("shellcheck", "-x", "--format=diff", "{{files}}") } }
     }
-    ["shfmt"] = Builtins.shfmt
-    ["typos"] = Builtins.typos
+    ["shfmt"] = (Builtins.shfmt) { shell = posixShell }
+    ["typos"] = (Builtins.typos) { shell = posixShell }
     // line-length（既定80文字）とdocument-start（`---`必須）は、GitHub Actions
     // ワークフローやdependabot.yml等の既存YAML資産を組織全体で継続的にcheck失敗
     // させるスタイル規則のため無効化する。truthyはGitHub Actionsの`on:`キー等、
@@ -143,6 +151,7 @@ local gitleaksPreCommit = new Step {
 }
 
 local gitleaksFullScan = new Step {
+    shell = posixShell
     types = List("text")
     check = #"""
         gitleaks git --redact --verbose --no-banner && { [ -z "$(git ls-files --cached --others --exclude-standard)" ] || git ls-files -z --cached --others --exclude-standard | xargs -0 -n1 -- sh -c 'f="$1"; [ -f "$f" ] || exit 0; gitleaks dir --redact --verbose --no-banner -- "$f"' _; }
@@ -180,6 +189,7 @@ hooks {
     ["pre-push"] {
         steps {
             ["no_push_to_protected_branch"] = new Step {
+                shell = posixShell
                 stdin = "{{ hook_stdin }}"
                 check = "! awk '{print $3}' | grep -qE '^refs/heads/(main|master)$'"
             }
