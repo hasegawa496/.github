@@ -1,0 +1,28 @@
+name: hk チェック
+description: PR の変更ファイルとコミットを検査する。
+inputs:
+  tools:
+    description: repo-ops が配布する mise のツール名とバージョン。
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: hk のツールを準備する
+      uses: jdx/mise-action@v5.2.10
+      with:
+        install_args: ${{ inputs.tools }}
+        env: false
+        export_path: false
+        add_shims_to_path: false
+      env:
+        MISE_SKIP_HOOKS: postinstall
+    - name: PR の変更を検査する
+      shell: bash
+      env:
+        HK_CI_TOOLS: ${{ inputs.tools }}
+        HK_MISE: "0"
+      run: |
+        read -r -a tools <<< "$HK_CI_TOOLS"
+        base=$(git rev-parse HEAD^1)
+        mise exec "${tools[@]}" -- hk check --check --from-ref "$base" --to-ref HEAD --skip-step gitleaks
+        mise exec "${tools[@]}" -- gitleaks git --log-opts="$base..HEAD" --redact --no-banner
